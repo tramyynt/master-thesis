@@ -40,11 +40,15 @@ def has_subject_id_been_predicted(subject_id, previous_predicted_results):
     if previous_predicted_results is None:
         return (False, None)
 
-    previous_predicted_of_subject_series = previous_predicted_results.loc[previous_predicted_results['SubjectId'] == subject_id]['Risk']
+    previous_predicted_of_subject_series = previous_predicted_results.loc[previous_predicted_results['SubjectId'] == subject_id]
     if previous_predicted_of_subject_series.empty:
         return (False, None)
 
-    return (True, previous_predicted_of_subject_series.iloc[0])
+    previous_predicted_risk = previous_predicted_of_subject_series['Risk'].iloc[0]
+    if previous_predicted_risk == 0:
+        return (False, None)
+
+    return (True, previous_predicted_risk)
 
 def predict_from_chunk_data(model, path_to_nth_chunk_folder, previous_predicted_results = None):
     # Load the data
@@ -70,12 +74,15 @@ def predict_from_chunk_data(model, path_to_nth_chunk_folder, previous_predicted_
         # risk = model.predict(individual_writings['Text'])
         risk = random.randint(0, 1)
 
+        # if risk != 0:
+        #     print(f"Predicted subject {subject_id} with risk {risk}")
+
         predicted_results = pd.concat([
             predicted_results,
             pd.DataFrame.from_dict({"SubjectId": [subject_id], "Risk": [risk]})
         ], ignore_index=True)
 
-    return predicted_results
+    return predicted_results.sort_values(by=['SubjectId'], ignore_index=True)
 
 def write_predicted_results_to_file(predicted_results, nth_chunk, path_to_result_folder = "./results"):
     predicted_results.to_csv(f"{path_to_result_folder}/mynguyen_{nth_chunk}.txt", sep="\t", index=False, header=False)
