@@ -7,10 +7,9 @@ import random
 def get_all_xml_files_in_a_folder(folder_path):
     xml_files = []
 
-    for root, dirs, files in os.walk(folder_path):
-        for file in files:
-            if file.endswith('.xml'):
-                xml_files.append(os.path.join(root, file))
+    for entry in os.scandir(folder_path):
+        if entry.is_file() and entry.name.endswith('.xml'):
+            xml_files.append(entry.path)
 
     return xml_files
 
@@ -34,7 +33,7 @@ def extract_data_from_xml(xml_file):
         return (subject_id, individual_writings)
     except Exception as e:
         print(f"[ERROR] Can't parsing {xml_file}: {str(e)}")
-        return None
+        return (None, None)
 
 def has_subject_id_been_predicted(subject_id, previous_predicted_results):
     if previous_predicted_results is None:
@@ -85,7 +84,7 @@ def predict_from_chunk_data(model, path_to_nth_chunk_folder, previous_predicted_
     return predicted_results.sort_values(by=['SubjectId'], ignore_index=True)
 
 def write_predicted_results_to_file(predicted_results, nth_chunk, path_to_result_folder = "./results"):
-    predicted_results.to_csv(f"{path_to_result_folder}/mynguyen_{nth_chunk}.txt", sep="\t", index=False, header=False)
+    predicted_results.to_csv(f"{path_to_result_folder}/mynguyen_{nth_chunk}.txt", sep=",", index=False, header=False)
 
 print("******************************")
 print("Start predicting chunk 1")

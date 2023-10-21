@@ -1,93 +1,66 @@
 import os
 import xml.etree.ElementTree as et
 import argparse
-import random
-import re
-
 
 parser = argparse.ArgumentParser(argument_default=argparse.SUPPRESS)
-parser.add_argument('-path', help='(Obligatory) Path to folder where XML files are placed.', required=True, nargs=1, dest="path")
+parser.add_argument('-path', help='(Obligatory) Path to folder where predicted results txt files are placed.', required=True, nargs=1, dest="path")
 parser.add_argument('-wsource', help='(Obligatory) Source file of the number of writings.', required=True, nargs=1, dest="wsource")
 args = parser.parse_args()
 
+RESULT_FOLDER_PATH = args.path[0]
+NUM_OF_WRITINGS_SOURCE = args.wsource[0]
+CHUNKS = 10
+RESULT_PREFIX = "mynguyen"
 
+# Construct a dictionary with the number of writings of each user/subject
+user_writings_dict = {}
+user_writings = open(NUM_OF_WRITINGS_SOURCE, "r")
+lines = user_writings.readlines()
 
-
-path = args.path[0]
-wsource = args.wsource[0]
-chunks = 10
-
-
-# List of documents in the path
-lista = os.listdir(path)
-if path[-1] == "/":
-    path = list(path)
-    path[-1] = ""
-
-path = "".join(path)
-
-usuarios = {}
-
-
-us_wr = open(wsource, "r")
-
-# Read user data
-lines = us_wr.readlines()
 for line in lines:
-    line = (line.strip().replace("\n", "")).split("\t")
+    id, number_of_writings = line.strip().replace(" ", "").split(",")
 
-    usuarios[line[0]] = [int(line[1]), 0, 0]
+    # Each user has a list of 3 elements: number of writings, risk decision, and chunk number gave the predicted result
+    user_writings_dict[id] = [int(number_of_writings), 0, 0]
 
-us_wr.close()
+user_writings.close()
 
-
-
-# Lists for _
-index_ = []
-org_name = ""
-
-for item in lista:
-    if ".DS_Store" not in item:
-        itemlist = list(item)
-        for letter in range(0, len(itemlist)):
-            if itemlist[letter] == "_":
-                index_.append(letter)
-        org_name = item[0:index_[-1]]
-        break
-
-
-
-# Read user files
-for i in range(1, chunks + 1):
+# Read risk decision from each chunk
+for i in range(1, CHUNKS + 1):
 
     # For chunk i
-    f_user = open(path + "/" + org_name + "_" + str(i) + ".txt", "r")
+    f_user = open(os.path.join(RESULT_FOLDER_PATH, f"{RESULT_PREFIX}_{str(i)}.txt"), "r")
     lines = f_user.readlines()
 
     # Iterate over the records in the file
     for line in lines:
-        line = (line.strip().replace("\n", "")).split("\t")
-        subject = usuarios[line[0]]
+        subject_id, risk_decision = line.replace(" ", "").split(",")
+        subject = user_writings_dict[subject_id]
 
+        # if predicted result is 0, update the predicted result of user
         if int(subject[1]) == 0:
-            subject[1] = int(line[1])
+            subject[1] = int(risk_decision)
             subject[2] = i
     f_user.close()
 
-final = open(path + "/" + org_name + "_global.txt", "w")
-for key in usuarios:
-    subject = usuarios[key]
+# Write the final result to a file
+final_result_file_path = os.path.join(RESULT_FOLDER_PATH, f"{RESULT_PREFIX}_global.txt")
+final = open(final_result_file_path, "w")
+for subject_id, subject in user_writings_dict.items():
+    total_number_of_writings = subject[0]
+    risk_decision = subject[1]
+    chunk_number_gave_the_predicted_result = subject[2]
 
-    if subject[2] == chunks:
-        num_w = subject[0]
+    if chunk_number_gave_the_predicted_result == CHUNKS:
+        num_w = total_number_of_writings
     else:
-        num_w = (subject[0] // chunks) * subject[2]
+        num_w = (total_number_of_writings // CHUNKS) * chunk_number_gave_the_predicted_result
 
 
-    if int(subject[1]) == 2:
-        subject[1] = 0
+    if int(risk_decision) == 2:
+        risk_decision = 0
 
-    final.write(key + " " + str(subject[1]) + " " + str(num_w) + "\n")
+    final.write(subject_id + " " + str(risk_decision) + " " + str(num_w) + "\n")
 final.close()
 
-print("Results saved in output file \"" + path + "/" + org_name + "_global.txt\"")
+print(f"Results saved in output file: {final_result_file_path}")

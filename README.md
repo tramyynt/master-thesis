@@ -2,7 +2,7 @@
 
 Need to format test files before running evaluation.
 
--   `writings_all_test_users.txt` need to be separated by 1 tab and all spaces around are being trimmed.
+-   `writings_all_test_users.txt` need to be separated by comma (",") and all spaces around are being trimmed.
 -   `test_golden_truth.txt` need to be separated by 1 space, not tab and all spaces around are being trimmed.
 
 ## Run evaluation
