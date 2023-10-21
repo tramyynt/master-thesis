@@ -60,7 +60,7 @@ for subject_id, subject in user_writings_dict.items():
     if int(risk_decision) == 2:
         risk_decision = 0
 
-    final.write(subject_id + " " + str(risk_decision) + " " + str(num_w) + "\n")
+    final.write(subject_id + " " + str(risk_decision) + " " + str(num_w) + " " + str(total_number_of_writings) + "\n")
 final.close()
 
 print(f"Results saved in output file: {final_result_file_path}")

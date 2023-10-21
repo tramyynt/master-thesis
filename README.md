@@ -10,4 +10,4 @@ Need to format test files before running evaluation.
 0. `cd model_evaluation`
 1. `python3 predict_results.py`
 2. `python3 aggregate_results.py -path ./results -wsource ./test_data/writings_all_test_users.txt`
-3. `python3 erisk_eval.py -gpath ./test_data/test_golden_truth.txt -ppath ./results/mynguyen_global.txt -o 5`
+3. `python3 erisk_eval.py -gpath ./test_data/test_golden_truth.txt -ppath ./results/mynguyen_global.txt -o 5 -oper 20`
