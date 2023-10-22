@@ -286,3 +286,5 @@ $RECYCLE.BIN/
 test_data/
 results/*.txt
 *.dic
+*.npy
+*.csv

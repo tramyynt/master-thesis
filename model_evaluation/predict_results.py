@@ -1,8 +1,32 @@
 import xml.etree.ElementTree as ET
 import pandas as pd
 import os
-
+import pandas as pd
+import nltk
+import os
+import re
+import numpy as np
+from nltk import word_tokenize, ngrams
+from nltk.corpus import stopwords
+import gensim
+from sklearn.feature_extraction.text import TfidfVectorizer
 import random
+import joblib
+import utils
+import subprocess
+import string
+
+HOME_DIR = "/home_remote"
+
+# Specify the path to the Python script you want to run
+script_path = os.path.join(HOME_DIR, 'master_thesis/model_evaluation/utils.py')
+
+# Run the script
+subprocess.call(['python', script_path])
+
+#read model joblib
+tfidf = joblib.load(os.path.join(HOME_DIR, "lg1.pkl"))
+doc2vec = joblib.load(os.path.join(HOME_DIR, "lg2.pkl"))
 
 def get_all_xml_files_in_a_folder(folder_path):
     xml_files = []
@@ -29,11 +53,13 @@ def extract_data_from_xml(xml_file):
             ], ignore_index=True)
 
         subject_id = root.find('ID').text
-
+        individual_writings['text'] = individual_writings['Title'] + individual_writings['Text']
         return (subject_id, individual_writings)
     except Exception as e:
         print(f"[ERROR] Can't parsing {xml_file}: {str(e)}")
         return (None, None)
+
+
 
 def has_subject_id_been_predicted(subject_id, previous_predicted_results):
     if previous_predicted_results is None:
@@ -49,13 +75,13 @@ def has_subject_id_been_predicted(subject_id, previous_predicted_results):
 
     return (True, previous_predicted_risk)
 
-def predict_from_chunk_data(model, path_to_nth_chunk_folder, previous_predicted_results = None):
+def predict_from_chunk_data(model,type, path_to_nth_chunk_folder, previous_predicted_results = None):
     # Load the data
     predicted_results = pd.DataFrame(columns = ['SubjectId', 'Risk'])
 
     for xml_file in get_all_xml_files_in_a_folder(path_to_nth_chunk_folder):
         subject_id, individual_writings = extract_data_from_xml(xml_file)
-
+        #print(individual_writings)
         if individual_writings is None:
             continue
 
@@ -68,10 +94,14 @@ def predict_from_chunk_data(model, path_to_nth_chunk_folder, previous_predicted_
             ], ignore_index=True)
             continue
 
-        # Predict the risk of each user (0: skip this chunk; 1: positive; 2: negative)
+        # Predict the risk of each user (0: skip the chunk; 1: positive; 2: negative)
         # TODO: option to join all documents or using one document at a time
-        # risk = model.predict(individual_writings['Text'])
-        risk = random.randint(0, 1)
+
+        #join all text in each individual_writings
+        text = individual_writings['text'].str.cat(sep=' ')
+        data = utils.pre_processing(text, type)
+        risk = model.predict(data)
+        #risk = random.randint(0, 1)
 
         # if risk != 0:
         #     print(f"Predicted subject {subject_id} with risk {risk}")
@@ -83,55 +113,55 @@ def predict_from_chunk_data(model, path_to_nth_chunk_folder, previous_predicted_
 
     return predicted_results.sort_values(by=['SubjectId'], ignore_index=True)
 
-def write_predicted_results_to_file(predicted_results, nth_chunk, path_to_result_folder = "./results"):
+def write_predicted_results_to_file(predicted_results, nth_chunk, path_to_result_folder = os.path.join(HOME_DIR, "master_thesis/model_evaluation/results")):
     predicted_results.to_csv(f"{path_to_result_folder}/mynguyen_{nth_chunk}.txt", sep=",", index=False, header=False)
 
 print("******************************")
 print("Start predicting chunk 1")
-chunk_1_results = predict_from_chunk_data(None, "./test_data/chunk 1")
+chunk_1_results = predict_from_chunk_data(doc2vec, 'doc2vec', os.path.join(HOME_DIR, 'eRisk2018training/2017_test/chunk 1'), None)
 write_predicted_results_to_file(chunk_1_results, 1)
 
 print("******************************")
 print("Start predicting chunk 2")
-chunk_2_results = predict_from_chunk_data(None, "./test_data/chunk 2", chunk_1_results)
+chunk_2_results = predict_from_chunk_data(doc2vec, 'doc2vec', os.path.join(HOME_DIR, 'eRisk2018training/2017_test/chunk 2'), chunk_1_results)
 write_predicted_results_to_file(chunk_2_results, 2)
 
 print("******************************")
 print("Start predicting chunk 3")
-chunk_3_results = predict_from_chunk_data(None, "./test_data/chunk 3", chunk_2_results)
+chunk_3_results = predict_from_chunk_data(doc2vec, 'doc2vec', os.path.join(HOME_DIR, 'eRisk2018training/2017_test/chunk 3'), chunk_2_results)
 write_predicted_results_to_file(chunk_3_results, 3)
 
 print("******************************")
 print("Start predicting chunk 4")
-chunk_4_results = predict_from_chunk_data(None, "./test_data/chunk 4", chunk_3_results)
+chunk_4_results = predict_from_chunk_data(doc2vec, 'doc2vec', os.path.join(HOME_DIR, 'eRisk2018training/2017_test/chunk 4'), chunk_3_results)
 write_predicted_results_to_file(chunk_4_results, 4)
 
 print("******************************")
 print("Start predicting chunk 5")
-chunk_5_results = predict_from_chunk_data(None, "./test_data/chunk 5", chunk_4_results)
+chunk_5_results = predict_from_chunk_data(doc2vec, 'doc2vec', os.path.join(HOME_DIR, 'eRisk2018training/2017_test/chunk 5'), chunk_4_results)
 write_predicted_results_to_file(chunk_5_results, 5)
 
 print("******************************")
 print("Start predicting chunk 6")
-chunk_6_results = predict_from_chunk_data(None, "./test_data/chunk 6", chunk_5_results)
+chunk_6_results = predict_from_chunk_data(doc2vec, 'doc2vec', os.path.join(HOME_DIR, 'eRisk2018training/2017_test/chunk 6'), chunk_5_results)
 write_predicted_results_to_file(chunk_6_results, 6)
 
 print("******************************")
 print("Start predicting chunk 7")
-chunk_7_results = predict_from_chunk_data(None, "./test_data/chunk 7", chunk_6_results)
+chunk_7_results = predict_from_chunk_data(doc2vec, 'doc2vec', os.path.join(HOME_DIR, 'eRisk2018training/2017_test/chunk 7'), chunk_6_results)
 write_predicted_results_to_file(chunk_7_results, 7)
 
 print("******************************")
 print("Start predicting chunk 8")
-chunk_8_results = predict_from_chunk_data(None, "./test_data/chunk 8", chunk_7_results)
+chunk_8_results = predict_from_chunk_data(doc2vec, 'doc2vec', os.path.join(HOME_DIR, 'eRisk2018training/2017_test/chunk 8'), chunk_7_results)
 write_predicted_results_to_file(chunk_8_results, 8)
 
 print("******************************")
-print("Start predicting chunk 19")
-chunk_9_results = predict_from_chunk_data(None, "./test_data/chunk 9", chunk_8_results)
+print("Start predicting chunk 9")
+chunk_9_results = predict_from_chunk_data(doc2vec, 'doc2vec', os.path.join(HOME_DIR, 'eRisk2018training/2017_test/chunk 9'), chunk_9_results)
 write_predicted_results_to_file(chunk_9_results, 9)
 
 print("******************************")
 print("Start predicting chunk 10")
-chunk_10_results = predict_from_chunk_data(None, "./test_data/chunk 10", chunk_9_results)
+chunk_10_results = predict_from_chunk_data(doc2vec, 'doc2vec', os.path.join(HOME_DIR, 'eRisk2018training/2017_test/chunk 10'), chunk_9_results)
 write_predicted_results_to_file(chunk_10_results, 10)
