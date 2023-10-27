@@ -39,21 +39,40 @@ def clean_text(text):
     return(text)
 
 
-def read_corpus(text, tokens_only=False):
-    tokens = gensim.utils.simple_preprocess(text)
-    if tokens_only:
-        yield tokens
+def read_corpus(df, tokens_only=False):
+    #print(df)
+    for i, line in enumerate(df['Text']):
+        tokens = gensim.utils.simple_preprocess(line)
+        if tokens_only:
+            yield tokens
+        else:
+            # For training data, add tags
+            yield gensim.models.doc2vec.TaggedDocument(tokens, [i])
 
-def pre_processing(text, type):
+def avg_feature_vector(train_corpus):
+    #df['Tag'] = train_corpus
+    #get tags of train_corpus
+    tags = [x.tags[0] for x in train_corpus]
+    #print(tags)
+    vector= [np.concatenate((doc2vec_model.infer_vector(train_corpus[x].words), doc2vec_model2.infer_vector(train_corpus[x].words)), axis=None) for x in tags]
+    #get just 1 an averaged vector from df['Vector']
+    return np.mean(vector, axis=0)
+
+def pre_processing(df, type):
     if type == 'tfidf':
-        text_clean = text.apply(clean_text)
-        tfidfconverter = TfidfVectorizer(max_features=1000, min_df=5, max_df=0.7)
-        X = tfidfconverter.fit_transform(text_clean).toarray()
+        text_clean = df['Text'].apply(lambda x: clean_text(x))
+        #load tfidf model
+        tfidfconverter = joblib.load(os.path.join(HOME_DIR, "tfidf_model.pkl"))
+        X = tfidfconverter.transform(text_clean).toarray()
 
     elif type == 'doc2vec':
-        tokens = read_corpus(text)
-        X= np.concatenate((doc2vec_model.infer_vector(tokens), doc2vec_model2.infer_vector(tokens)), axis=None)
-    return X.reshape(1, -1)
+        corpus = list(read_corpus(df))
+        #print(corpus)
+        X = avg_feature_vector(corpus)
+        #tokens = read_corpus(text)
+        #X= np.concatenate((doc2vec_model.infer_vector(tokens), doc2vec_model2.infer_vector(tokens)), axis=None)
+        X = X.reshape(1, -1)
+    return X
 
 
     

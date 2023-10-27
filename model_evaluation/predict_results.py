@@ -26,8 +26,10 @@ subprocess.call(['python', script_path])
 
 #read model joblib
 tfidf = joblib.load(os.path.join(HOME_DIR, "lg1.pkl"))
-doc2vec = joblib.load(os.path.join(HOME_DIR, "lg2.pkl"))
+#doc2vec = joblib.load(os.path.join(HOME_DIR, "conventional_model.pkl"))
+doc2vec = joblib.load(os.path.join(HOME_DIR, "lg3.pkl"))1
 
+# ------------------------- FUNCTIONS ------------------------- #
 def get_all_xml_files_in_a_folder(folder_path):
     xml_files = []
 
@@ -72,7 +74,7 @@ def has_subject_id_been_predicted(subject_id, previous_predicted_results):
     previous_predicted_of_subject_series = previous_predicted_results.loc[previous_predicted_results['SubjectId'] == subject_id]
     if previous_predicted_of_subject_series.empty:
         return (False, None)
-
+    #if that user is predicted as O -> will be predicted in next chunk
     previous_predicted_risk = previous_predicted_of_subject_series['Risk'].iloc[0]
     if previous_predicted_risk == 0:
         return (False, None)
@@ -86,7 +88,7 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
     :param all_writings all writings of all users from current chunk and all previous chunks
     :param all_users list of subject/user id
     """
-    # Load the data
+    
     predicted_results = pd.DataFrame(columns = ['SubjectId', 'Risk'])
 
     for subject_id in all_users:
@@ -108,10 +110,27 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
         # TODO: option to join all documents or using one document at a time
 
         #join all text in each individual_writings
-        title_and_text = all_writings_of_subject['Title'] + all_writings_of_subject['Text']
-        text = title_and_text.str.cat(sep=' ')
-        data = utils.pre_processing(text, type)
-        risk = model.predict(data)
+        #all_writings_of_subject['text_joint'] = all_writings_of_subject['Title'] + all_writings_of_subject['Text']
+        #text = title_and_text.str.cat(sep=' '))
+        #print(all_writings_of_subject)
+        data = utils.pre_processing(all_writings_of_subject, type)
+        #print(data)
+        #risk = model.predict(data)
+        prob = model.predict_proba(data)
+        if prob[0,1] > 0.7:
+            risk = 1
+        elif prob[0,1] > 0.6 and all_writings_of_subject.shape[0] > 10:
+            risk = 1
+        elif prob[0,1] > 0.5 and all_writings_of_subject.shape[0] > 15:
+            risk = 1
+        elif prob[0,1] < 0.01:
+            risk = 2
+        elif prob[0,1] < 0.05 and all_writings_of_subject.shape[0] > 10:
+            risk = 2
+        elif prob[0,1] < 0.1 and all_writings_of_subject.shape[0] > 20:
+            risk = 2
+        else:
+            risk = 0
         # risk = random.randint(0, 1)
 
         # if risk != 0:
@@ -119,7 +138,7 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
 
         predicted_results = pd.concat([
             predicted_results,
-            pd.DataFrame.from_dict({"SubjectId": [subject_id], "Risk": [risk]})
+            pd.DataFrame.from_dict({"SubjectId": [subject_id], "Risk": risk})
         ], ignore_index=True)
 
     return predicted_results.sort_values(by=['SubjectId'], ignore_index=True)
@@ -173,6 +192,10 @@ for chunk_i in range(1, 11):
 
     print(f"Start predicting chunk {chunk_i}")
     predicted_results = predict_from_chunk_data(doc2vec, 'doc2vec', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
+
+    if (chunk_i == 10):
+        predicted_results.loc[predicted_results["Risk"] == 0, "Risk"] = 2
+
     write_predicted_results_to_file(predicted_results, chunk_i)
 
     previous_predicted_results = predicted_results
