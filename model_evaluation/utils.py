@@ -41,7 +41,7 @@ def clean_text(text):
 
 def read_corpus(df, tokens_only=False):
     #print(df)
-    for i, line in enumerate(df['Text']):
+    for i, line in enumerate(df['text']):
         tokens = gensim.utils.simple_preprocess(line)
         if tokens_only:
             yield tokens
@@ -60,10 +60,12 @@ def avg_feature_vector(train_corpus):
 
 def pre_processing(df, type):
     if type == 'tfidf':
-        text_clean = df['Text'].apply(lambda x: clean_text(x))
+        text_clean = df['text'].apply(lambda x: clean_text(x))
         #load tfidf model
         tfidfconverter = joblib.load(os.path.join(HOME_DIR, "tfidf_model.pkl"))
-        X = tfidfconverter.transform(text_clean).toarray()
+        X_array = tfidfconverter.transform(text_clean).toarray()
+        X = np.mean(X_array, axis=0).reshape(1, -1)
+
 
     elif type == 'doc2vec':
         corpus = list(read_corpus(df))

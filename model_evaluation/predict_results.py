@@ -15,6 +15,7 @@ import joblib
 import utils
 import subprocess
 import string
+pd.options.mode.chained_assignment = None
 
 HOME_DIR = "/home_remote"
 
@@ -27,7 +28,7 @@ subprocess.call(['python', script_path])
 #read model joblib
 tfidf = joblib.load(os.path.join(HOME_DIR, "lg1.pkl"))
 #doc2vec = joblib.load(os.path.join(HOME_DIR, "conventional_model.pkl"))
-doc2vec = joblib.load(os.path.join(HOME_DIR, "lg3.pkl"))1
+doc2vec = joblib.load(os.path.join(HOME_DIR, "lg3.pkl"))
 
 # ------------------------- FUNCTIONS ------------------------- #
 def get_all_xml_files_in_a_folder(folder_path):
@@ -110,27 +111,43 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
         # TODO: option to join all documents or using one document at a time
 
         #join all text in each individual_writings
-        #all_writings_of_subject['text_joint'] = all_writings_of_subject['Title'] + all_writings_of_subject['Text']
+        all_writings_of_subject['text'] = all_writings_of_subject['Title'] + all_writings_of_subject['Text']
         #text = title_and_text.str.cat(sep=' '))
         #print(all_writings_of_subject)
         data = utils.pre_processing(all_writings_of_subject, type)
         #print(data)
         #risk = model.predict(data)
         prob = model.predict_proba(data)
-        if prob[0,1] > 0.7:
-            risk = 1
-        elif prob[0,1] > 0.6 and all_writings_of_subject.shape[0] > 10:
-            risk = 1
-        elif prob[0,1] > 0.5 and all_writings_of_subject.shape[0] > 15:
-            risk = 1
-        elif prob[0,1] < 0.01:
-            risk = 2
-        elif prob[0,1] < 0.05 and all_writings_of_subject.shape[0] > 10:
-            risk = 2
-        elif prob[0,1] < 0.1 and all_writings_of_subject.shape[0] > 20:
-            risk = 2
+        if type == 'doc2vec':
+            if prob[0,1] > 0.7:
+                risk = 1
+            elif prob[0,1] > 0.6 and all_writings_of_subject.shape[0] > 10:
+                risk = 1
+            elif prob[0,1] > 0.5 and all_writings_of_subject.shape[0] > 15:
+                risk = 1
+            elif prob[0,1] < 0.01:
+                risk = 2
+            elif prob[0,1] < 0.05 and all_writings_of_subject.shape[0] > 10:
+                risk = 2
+            elif prob[0,1] < 0.1 and all_writings_of_subject.shape[0] > 20:
+                risk = 2
+            else:
+                risk = 0
         else:
-            risk = 0
+            if prob[0,1] > 0.6:
+                risk = 1
+            #elif prob[0,1] > 0.6 and all_writings_of_subject.shape[0] > 10:
+                #risk = 1
+            elif prob[0,1] > 0.5 and all_writings_of_subject.shape[0] > 10:
+                risk = 1
+            elif prob[0,1] < 0.09:
+                risk = 2
+            elif prob[0,1] < 0.1 and all_writings_of_subject.shape[0] > 10:
+                risk = 2
+            elif prob[0,1] < 0.2 and all_writings_of_subject.shape[0] > 20:
+                risk = 2
+            else:
+                risk = 0
         # risk = random.randint(0, 1)
 
         # if risk != 0:
@@ -191,7 +208,7 @@ for chunk_i in range(1, 11):
     all_writings = pd.concat([all_writings, chunk_writings], ignore_index=True)
 
     print(f"Start predicting chunk {chunk_i}")
-    predicted_results = predict_from_chunk_data(doc2vec, 'doc2vec', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
+    predicted_results = predict_from_chunk_data(tfidf, 'tfidf', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
 
     if (chunk_i == 10):
         predicted_results.loc[predicted_results["Risk"] == 0, "Risk"] = 2
