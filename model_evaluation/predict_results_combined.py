@@ -82,7 +82,7 @@ def has_subject_id_been_predicted(subject_id, previous_predicted_results):
 
     return (True, previous_predicted_risk)
 
-def predict_from_chunk_data(model, type, all_writings, all_users, previous_predicted_results = None):
+def predict_from_chunk_data(model1, type1,model2, type2, all_writings, all_users, previous_predicted_results = None):
     """
     :param model: the model used for prediction
     :param type: the type of model (tfidf, doc2vec)
@@ -112,42 +112,31 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
 
         #join all text in each individual_writings
         all_writings_of_subject['text'] = all_writings_of_subject['Title'] + all_writings_of_subject['Text']
+
         #text = title_and_text.str.cat(sep=' '))
         #print(all_writings_of_subject)
-        data = utils.pre_processing(all_writings_of_subject, type)
+        data1 = utils.pre_processing(all_writings_of_subject, type1)
+        data2 = utils.pre_processing(all_writings_of_subject, type2)
         #print(data)
         #risk = model.predict(data)
-        prob = model.predict_proba(data)
-        if type == 'doc2vec':
-            if prob[0,1] > 0.3:
-                risk = 1
-            elif prob[0,1] > 0.25 and all_writings_of_subject.shape[0] > 10:
-                risk = 1
-            #elif prob[0,1] > 0.4 and all_writings_of_subject.shape[0] > 15:
-                #risk = 1
-            elif prob[0,1] < 0.05:
-                risk = 2
-            elif prob[0,1] < 0.15 and all_writings_of_subject.shape[0] > 10:
-                risk = 2
-            # elif prob[0,1] < 0.1 and all_writings_of_subject.shape[0] > 20:
-            #     risk = 2
-            else:
-                risk = 0
+        prob1 = model1.predict_proba(data1)
+        prob2 = model2.predict_proba(data2)
+        #average prob
+        prob = np.mean([prob1, prob2], axis=0)
+        if prob[0,1] > 0.4:
+            risk = 1
+        elif prob[0,1] > 0.3 and all_writings_of_subject.shape[0] > 10:
+            risk = 1
+        #elif prob[0,1] > 0.4 and all_writings_of_subject.shape[0] > 15:
+            #risk = 1
+        elif prob[0,1] < 0.05:
+            risk = 2
+        elif prob[0,1] < 0.15 and all_writings_of_subject.shape[0] > 10:
+            risk = 2
+        # elif prob[0,1] < 0.1 and all_writings_of_subject.shape[0] > 20:
+        #     risk = 2
         else:
-            if prob[0,1] > 0.3:
-                risk = 1
-            #elif prob[0,1] > 0.6 and all_writings_of_subject.shape[0] > 10:
-                #risk = 1
-            elif prob[0,1] > 0.25 and all_writings_of_subject.shape[0] > 10:
-                risk = 1
-            elif prob[0,1] < 0.05:
-                risk = 2
-            elif prob[0,1] < 0.1 and all_writings_of_subject.shape[0] > 10:
-                risk = 2
-            elif prob[0,1] < 0.15 and all_writings_of_subject.shape[0] > 20:
-                risk = 2
-            else:
-                risk = 0
+            risk = 0
         # risk = random.randint(0, 1)
 
         # if risk != 0:
@@ -208,7 +197,7 @@ for chunk_i in range(1, 11):
     all_writings = pd.concat([all_writings, chunk_writings], ignore_index=True)
 
     print(f"Start predicting chunk {chunk_i}")
-    predicted_results = predict_from_chunk_data(tfidf, 'tfidf', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
+    predicted_results = predict_from_chunk_data(doc2vec, 'doc2vec',tfidf, 'tfidf', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
 
     if (chunk_i == 10):
         predicted_results.loc[predicted_results["Risk"] == 0, "Risk"] = 2
