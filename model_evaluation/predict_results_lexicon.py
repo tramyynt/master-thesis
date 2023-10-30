@@ -239,4 +239,3 @@ for chunk_i in range(1, 11):
     write_predicted_results_to_file(predicted_results, chunk_i)
 
     previous_predicted_results = predicted_results
-
