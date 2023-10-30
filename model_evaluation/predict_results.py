@@ -119,12 +119,12 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
         #risk = model.predict(data)
         prob = model.predict_proba(data)
         if type == 'doc2vec':
-            if prob[0,1] > 0.3:
+            if prob[0,1] > 0.5:
                 risk = 1
-            elif prob[0,1] > 0.25 and all_writings_of_subject.shape[0] > 10:
+            elif prob[0,1] > 0.45 and all_writings_of_subject.shape[0] > 10:
                 risk = 1
-            #elif prob[0,1] > 0.4 and all_writings_of_subject.shape[0] > 15:
-                #risk = 1
+            elif prob[0,1] > 0.4 and all_writings_of_subject.shape[0] > 15:
+                risk = 1
             elif prob[0,1] < 0.05:
                 risk = 2
             elif prob[0,1] < 0.15 and all_writings_of_subject.shape[0] > 10:
@@ -208,7 +208,7 @@ for chunk_i in range(1, 11):
     all_writings = pd.concat([all_writings, chunk_writings], ignore_index=True)
 
     print(f"Start predicting chunk {chunk_i}")
-    predicted_results = predict_from_chunk_data(tfidf, 'tfidf', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
+    predicted_results = predict_from_chunk_data(doc2vec, 'doc2vec', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
 
     if (chunk_i == 10):
         predicted_results.loc[predicted_results["Risk"] == 0, "Risk"] = 2

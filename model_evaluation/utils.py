@@ -14,6 +14,9 @@ import string
 import joblib
 from gensim.models.doc2vec import Doc2Vec
 from gensim.test.utils import get_tmpfile
+import liwc_alike
+from liwc import Liwc
+import ast
 
 HOME_DIR = "/home_remote"
 fname = get_tmpfile(os.path.join(HOME_DIR,"master_thesis/model_evaluation/my_doc2vec_model"))
@@ -21,6 +24,24 @@ fname2 = get_tmpfile(os.path.join(HOME_DIR,"master_thesis/model_evaluation/my_do
 #load model
 doc2vec_model = Doc2Vec.load(fname)
 doc2vec_model2 = Doc2Vec.load(fname2)
+
+
+#feature names
+relevant_features_name ={'liwc': ['i', 'AverageLength', 'friend', 'sad', 'family', 'feel', 'health',
+       'sexual', 'anx', 'body', 'bio', 'ppron', 'filler', 'shehe', 'adverb',
+       'swear', 'humans', 'excl', 'assent', 'discrep', 'you', 'pronoun',
+       'negemo', 'past'],
+                        'liwc_alike': ['Anxiety', 'I', 'Sadness', 'AverageLength', 'Affective Processes',
+       'Sexuality', 'Family', 'Friends', 'Fillers', 'Health', 'Feeling',
+       'Humans', 'Biological Processes', 'Time', 'Body', 'Negative Emotions',
+       'Social Processes', 'Perceptual Processes', 'Insight',
+       'Cognitive Processes', 'Motion', 'Positive Emotions', 'Tentative',
+       'Ppronouns']}
+
+#liwc_alike data
+liwc2 = pd.read_excel('/home_remote/dic_avg100_annotated_official.xlsx')
+liwc2['Terms'] = liwc2['Term'].apply(lambda x: ast.literal_eval(x))
+result = dict(zip(liwc2['Category'], liwc2['Terms']))
 
 def clean_text(text):
     # lower text
@@ -58,6 +79,47 @@ def avg_feature_vector(train_corpus):
     #get just 1 an averaged vector from df['Vector']
     return np.mean(vector, axis=0)
 
+
+#add AverageLength, NumOfWritings to the vector
+def add_to_counter(counter, key, value):
+  counter[key] = value
+  return counter
+
+#get features
+def get_features(df,relevant_features_name, type):
+    #print(df)
+    if type == 'liwc':
+        liwc = Liwc(os.path.join(HOME_DIR, "master_thesis/LIWC2007_English100131.dic"))
+        output = liwc.parse(word_tokenize(df['text'][0]))
+
+        for item in pd.Series(relevant_features_name['liwc']):
+            if item not in output:
+                output[item] = 0
+    elif type == 'liwc_alike':
+        output = liwc_alike.main(df['text'][0], result)
+        for item in pd.Series(relevant_features_name['liwc_alike']):
+            if item not in output:
+                output[item] = 0
+
+    #print(output)
+    df['vector'] = [output]
+    average_length = df['AverageLength']
+    num_of_writings = df['NumOfWritings']
+    vector = df['vector']
+    for i in range(len(vector)):
+        vector[i] = add_to_counter(vector[i], "AverageLength", average_length[i])
+        vector[i] = add_to_counter(vector[i], "NumOfWritings", num_of_writings[i])
+    df['vector_added'] = vector   
+    vector_df = pd.DataFrame(df['vector_added'].tolist(), index=df.index)
+    vector_df_norm = (vector_df - vector_df.min()) / (vector_df.max() - vector_df.min())
+    #vector_df_norm['Label'] = df['Label']
+    vector_df_norm['SubjectId'] = df['SubjectId']
+    vector_df_norm = vector_df_norm.fillna(0)
+    #print(vector_df_norm)
+    X = vector_df_norm[relevant_features_name[type]]
+    #y = vector_df_norm['Label']
+    return X.values
+
 def pre_processing(df, type):
     if type == 'tfidf':
         text_clean = df['text'].apply(lambda x: clean_text(x))
@@ -74,6 +136,11 @@ def pre_processing(df, type):
         #tokens = read_corpus(text)
         #X= np.concatenate((doc2vec_model.infer_vector(tokens), doc2vec_model2.infer_vector(tokens)), axis=None)
         X = X.reshape(1, -1)
+    
+    elif type == 'liwc':
+        X = get_features(df, relevant_features_name, 'liwc')
+    elif type == 'liwc_alike':
+        X = get_features(df, relevant_features_name, 'liwc_alike')
     return X
 
 

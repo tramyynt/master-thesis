@@ -123,12 +123,12 @@ def predict_from_chunk_data(model1, type1,model2, type2, all_writings, all_users
         prob2 = model2.predict_proba(data2)
         #average prob
         prob = np.mean([prob1, prob2], axis=0)
-        if prob[0,1] > 0.4:
+        if prob[0,1] > 0.7:
             risk = 1
-        elif prob[0,1] > 0.3 and all_writings_of_subject.shape[0] > 10:
+        elif prob[0,1] > 0.6 and all_writings_of_subject.shape[0] > 10:
             risk = 1
-        #elif prob[0,1] > 0.4 and all_writings_of_subject.shape[0] > 15:
-            #risk = 1
+        elif prob[0,1] > 0.5 and all_writings_of_subject.shape[0] > 15:
+            risk = 1
         elif prob[0,1] < 0.05:
             risk = 2
         elif prob[0,1] < 0.15 and all_writings_of_subject.shape[0] > 10:

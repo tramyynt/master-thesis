@@ -29,6 +29,10 @@ subprocess.call(['python', script_path])
 tfidf = joblib.load(os.path.join(HOME_DIR, "lg1.pkl"))
 #doc2vec = joblib.load(os.path.join(HOME_DIR, "conventional_model.pkl"))
 doc2vec = joblib.load(os.path.join(HOME_DIR, "lg3.pkl"))
+#get liwc model
+liwc_lg = joblib.load(os.path.join(HOME_DIR, "liwc_lg.pkl"))
+#get liwc_alike model
+liwc_alike_lg = joblib.load(os.path.join(HOME_DIR, "liwc_alike_lg.pkl"))
 
 # ------------------------- FUNCTIONS ------------------------- #
 def get_all_xml_files_in_a_folder(folder_path):
@@ -83,39 +87,42 @@ def has_subject_id_been_predicted(subject_id, previous_predicted_results):
     return (True, previous_predicted_risk)
 
 def construct_liwc_input(df):
-  """
-  params: df - The positive/negative dataframe loaded from pickle
-    The df is expected to has these columns "Title", "Date", "Text", "SubjectId"
-  params: label - The label need to be assigned to result dataframe
+    """
+    params: df - The positive/negative dataframe loaded from pickle
+        The df is expected to has these columns "Title", "Date", "Text", "SubjectId"
+    params: label - The label need to be assigned to result dataframe
 
-  returns: A dataframe contains "SubjectId", "AverageLength", "Text", "NumOfWritings"
-  """
- #subject_id_list = df.loc[:, "SubjectId"].unique()
-  df["Token"] = df["Text"].apply(lambda x: word_tokenize(x))
+    returns: A dataframe contains "SubjectId", "AverageLength", "Text", "NumOfWritings", "Title"
+    """
+    subject_id_list = df.loc[:, "SubjectId"].unique()
+    df["Token"] = df["Text"].apply(lambda x: word_tokenize(x))
 
-  grouped_by_subject_id = df.groupby('SubjectId')
+    df['text'] = df['Text']+ df['Title']
 
-  # calculate average token length for each user
-  average_length_df = grouped_by_subject_id['Token'].apply(lambda token_series: sum(len(token) for token in token_series) / len(token_series)).reset_index()
-  average_length_df.rename(columns={'Token': 'AverageLength'}, inplace=True)
+    grouped_by_subject_id = df.groupby('SubjectId')
 
-  # join all writings of single user into single corpus
-  joined_text_df = grouped_by_subject_id['Text'].apply(' '.join).reset_index()
+    # calculate average token length for each user
+    average_length_df = grouped_by_subject_id['Token'].apply(lambda token_series: sum(len(token) for token in token_series) / len(token_series)).reset_index()
+    average_length_df.rename(columns={'Token': 'AverageLength'}, inplace=True)
+    #print(average_length_df.head())
 
-  # calculate number of writings for each user
-  number_of_writings_df = grouped_by_subject_id['Text'].apply(lambda x: len(x)).reset_index()
-  number_of_writings_df.rename(columns={'Text': 'NumOfWritings'}, inplace=True)
+    # join all writings of single user into single corpus
+    joined_text_df = grouped_by_subject_id['text'].apply(' '.join).reset_index()
 
-  result_df = average_length_df.merge(joined_text_df, on="SubjectId")
-  result_df = result_df.merge(number_of_writings_df, on="SubjectId")
+    # calculate number of writings for each user
+    number_of_writings_df = grouped_by_subject_id['Text'].apply(lambda x: len(x)).reset_index()
+    number_of_writings_df.rename(columns={'Text': 'NumOfWritings'}, inplace=True)
 
-  return result_df
+    result_df = average_length_df.merge(joined_text_df, on="SubjectId")
+    result_df = result_df.merge(number_of_writings_df, on="SubjectId")
+
+    return result_df
 
 
 def predict_from_chunk_data(model, type, all_writings, all_users, previous_predicted_results = None):
     """
     :param model: the model used for prediction
-    :param type: the type of model (tfidf, doc2vec)
+    :param type: the type of model (tfidf, doc2vec, liwc, liwc_alike)
     :param all_writings all writings of all users from current chunk and all previous chunks
     :param all_users list of subject/user id
     """
@@ -142,7 +149,7 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
         all_writings_of_subject = construct_liwc_input(all_writings_of_subject)
 
         #join all text in each individual_writings
-        all_writings_of_subject['text'] = all_writings_of_subject['Title'] + all_writings_of_subject['Text']
+        #all_writings_of_subject['text'] = all_writings_of_subject['Title'] + all_writings_of_subject['Text']
 
         #text = title_and_text.str.cat(sep=' '))
         #print(all_writings_of_subject)
@@ -150,12 +157,12 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
         #print(data)
         #risk = model.predict(data)
         prob = model.predict_proba(data)
-        if prob[0,1] > 0.4:
+        if prob[0,1] > 0.5:
             risk = 1
-        elif prob[0,1] > 0.3 and all_writings_of_subject.shape[0] > 10:
+        elif prob[0,1] > 0.4 and all_writings_of_subject.shape[0] > 10:
             risk = 1
-        #elif prob[0,1] > 0.4 and all_writings_of_subject.shape[0] > 15:
-            #risk = 1
+        elif prob[0,1] > 0.3 and all_writings_of_subject.shape[0] > 15:
+            risk = 1
         elif prob[0,1] < 0.05:
             risk = 2
         elif prob[0,1] < 0.15 and all_writings_of_subject.shape[0] > 10:
@@ -224,7 +231,7 @@ for chunk_i in range(1, 11):
     all_writings = pd.concat([all_writings, chunk_writings], ignore_index=True)
 
     print(f"Start predicting chunk {chunk_i}")
-    predicted_results = predict_from_chunk_data(doc2vec, 'doc2vec',tfidf, 'tfidf', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
+    predicted_results = predict_from_chunk_data(liwc_lg, 'liwc', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
 
     if (chunk_i == 10):
         predicted_results.loc[predicted_results["Risk"] == 0, "Risk"] = 2
@@ -232,3 +239,4 @@ for chunk_i in range(1, 11):
     write_predicted_results_to_file(predicted_results, chunk_i)
 
     previous_predicted_results = predicted_results
+
