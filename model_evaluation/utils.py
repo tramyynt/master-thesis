@@ -91,34 +91,40 @@ def get_features(df,relevant_features_name, type):
     if type == 'liwc':
         liwc = Liwc(os.path.join(HOME_DIR, "master_thesis/LIWC2007_English100131.dic"))
         output = liwc.parse(word_tokenize(df['text'][0]))
-
-        for item in pd.Series(relevant_features_name['liwc']):
+        #print(output)
+        #relevant features for liwc except AverageLength
+        for item in pd.Series([i for i in relevant_features_name['liwc'] if i != 'AverageLength']):
             if item not in output:
                 output[item] = 0
     elif type == 'liwc_alike':
         output = liwc_alike.main(df['text'][0], result)
-        for item in pd.Series(relevant_features_name['liwc_alike']):
+        for item in pd.Series([i for i in relevant_features_name['liwc_alike'] if i != 'AverageLength']):
             if item not in output:
                 output[item] = 0
 
     #print(output)
-    df['vector'] = [output]
-    average_length = df['AverageLength']
-    num_of_writings = df['NumOfWritings']
-    vector = df['vector']
-    for i in range(len(vector)):
-        vector[i] = add_to_counter(vector[i], "AverageLength", average_length[i])
-        vector[i] = add_to_counter(vector[i], "NumOfWritings", num_of_writings[i])
-    df['vector_added'] = vector   
-    vector_df = pd.DataFrame(df['vector_added'].tolist(), index=df.index)
-    vector_df_norm = (vector_df - vector_df.min()) / (vector_df.max() - vector_df.min())
+   # df['vector'] = [output]
+    average_length = df['AverageLength'][0]
+    output['AverageLength'] = average_length
+
+    vector_df = pd.DataFrame([output])
+    #print(vector_df)
+    #vector_df_norm = (vector_df - vector_df.min()) / (vector_df.max() - vector_df.min())
     #vector_df_norm['Label'] = df['Label']
-    vector_df_norm['SubjectId'] = df['SubjectId']
-    vector_df_norm = vector_df_norm.fillna(0)
+    vector_df['SubjectId'] = df['SubjectId']
+    #vector_df_norm = vector_df_norm.fillna(0)
     #print(vector_df_norm)
-    X = vector_df_norm[relevant_features_name[type]]
-    #y = vector_df_norm['Label']
-    return X.values
+    temp = vector_df[relevant_features_name[type]]
+    temp_vector = temp.values[0]
+    #print(temp_vector)
+    #normailize temp_vector
+    if temp_vector.max() != 0:
+        X = (temp_vector - temp_vector.min()) / (temp_vector.max() - temp_vector.min())
+    #print(X)
+    else:
+        print(vector_df['SubjectId'])
+        return None
+    return X.reshape(1, -1)
 
 def pre_processing(df, type):
     if type == 'tfidf':
@@ -139,8 +145,10 @@ def pre_processing(df, type):
     
     elif type == 'liwc':
         X = get_features(df, relevant_features_name, 'liwc')
+        #print(type(X))
     elif type == 'liwc_alike':
         X = get_features(df, relevant_features_name, 'liwc_alike')
+        #print(X)
     return X
 
 

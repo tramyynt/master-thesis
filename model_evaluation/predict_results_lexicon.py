@@ -15,6 +15,8 @@ import joblib
 import utils
 import subprocess
 import string
+import warnings
+warnings.filterwarnings("ignore")
 pd.options.mode.chained_assignment = None
 
 HOME_DIR = "/home_remote"
@@ -30,9 +32,11 @@ tfidf = joblib.load(os.path.join(HOME_DIR, "lg1.pkl"))
 #doc2vec = joblib.load(os.path.join(HOME_DIR, "conventional_model.pkl"))
 doc2vec = joblib.load(os.path.join(HOME_DIR, "lg3.pkl"))
 #get liwc model
-liwc_lg = joblib.load(os.path.join(HOME_DIR, "liwc_lg.pkl"))
+liwc_lg = joblib.load(os.path.join(HOME_DIR, "liwc_lg2.pkl"))
 #get liwc_alike model
-liwc_alike_lg = joblib.load(os.path.join(HOME_DIR, "liwc_alike_lg.pkl"))
+liwc_alike_lg = joblib.load(os.path.join(HOME_DIR, "liwc_alike_lg2.pkl"))
+#get liwc_alike_rf model
+liwc_alike_rf = joblib.load(os.path.join(HOME_DIR, "liwc_alike_rf.pkl"))
 
 # ------------------------- FUNCTIONS ------------------------- #
 def get_all_xml_files_in_a_folder(folder_path):
@@ -153,24 +157,28 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
 
         #text = title_and_text.str.cat(sep=' '))
         #print(all_writings_of_subject)
+    
         data = utils.pre_processing(all_writings_of_subject, type)
+        if data is None:
+            continue
+        else:
         #print(data)
         #risk = model.predict(data)
-        prob = model.predict_proba(data)
-        if prob[0,1] > 0.5:
-            risk = 1
-        elif prob[0,1] > 0.4 and all_writings_of_subject.shape[0] > 10:
-            risk = 1
-        elif prob[0,1] > 0.3 and all_writings_of_subject.shape[0] > 15:
-            risk = 1
-        elif prob[0,1] < 0.05:
-            risk = 2
-        elif prob[0,1] < 0.15 and all_writings_of_subject.shape[0] > 10:
-            risk = 2
-        # elif prob[0,1] < 0.1 and all_writings_of_subject.shape[0] > 20:
-        #     risk = 2
-        else:
-            risk = 0
+            prob = model.predict_proba(data)
+            if prob[0,1] > 0.6:
+                risk = 1
+            elif prob[0,1] > 0.5 and all_writings_of_subject.shape[0] > 10:
+                risk = 1
+            elif prob[0,1] > 0.4 and all_writings_of_subject.shape[0] > 20:
+                risk = 1
+            elif prob[0,1] < 0.02:
+                risk = 2
+            elif prob[0,1] < 0.05 and all_writings_of_subject.shape[0] > 10:
+                risk = 2
+            elif prob[0,1] < 0.1 and all_writings_of_subject.shape[0] > 20:
+                 risk = 2
+            else:
+                risk = 0
         # risk = random.randint(0, 1)
 
         # if risk != 0:
@@ -231,7 +239,7 @@ for chunk_i in range(1, 11):
     all_writings = pd.concat([all_writings, chunk_writings], ignore_index=True)
 
     print(f"Start predicting chunk {chunk_i}")
-    predicted_results = predict_from_chunk_data(liwc_lg, 'liwc', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
+    predicted_results = predict_from_chunk_data(liwc_alike_lg, 'liwc_alike', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
 
     if (chunk_i == 10):
         predicted_results.loc[predicted_results["Risk"] == 0, "Risk"] = 2
