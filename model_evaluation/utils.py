@@ -38,6 +38,17 @@ relevant_features_name ={'liwc': ['i', 'AverageLength', 'friend', 'sad', 'family
        'Cognitive Processes', 'Motion', 'Positive Emotions', 'Tentative',
        'Ppronouns']}
 
+relevant_features_name_without_Length ={'liwc': ['i', 'friend', 'sad', 'family', 'feel', 'health',
+       'sexual', 'anx', 'body', 'bio', 'ppron', 'filler', 'shehe', 'adverb',
+       'swear', 'humans', 'excl', 'assent', 'discrep', 'you', 'pronoun',
+       'negemo', 'past'],
+                        'liwc_alike': ['Anxiety', 'I', 'Sadness', 'Affective Processes',
+       'Sexuality', 'Family', 'Friends', 'Fillers', 'Health', 'Feeling',
+       'Humans', 'Biological Processes', 'Time', 'Body', 'Negative Emotions',
+       'Social Processes', 'Perceptual Processes', 'Insight',
+       'Cognitive Processes', 'Motion', 'Positive Emotions', 'Tentative',
+       'Ppronouns']}
+
 #liwc_alike data
 liwc2 = pd.read_excel('/home_remote/dic_avg100_annotated_official.xlsx')
 liwc2['Terms'] = liwc2['Term'].apply(lambda x: ast.literal_eval(x))
@@ -126,6 +137,32 @@ def get_features(df,relevant_features_name, type):
         return None
     return X.reshape(1, -1)
 
+def extract_features_no_addition(df, relevant_features_name, type):
+    if type == 'liwc':
+        liwc = Liwc(os.path.join(HOME_DIR, "master_thesis/LIWC2007_English100131.dic"))
+        output = liwc.parse(word_tokenize(df['text'][0]))
+        #print(output)
+        #relevant features for liwc except AverageLength
+        for item in pd.Series([i for i in relevant_features_name_without_Length['liwc']]):
+            if item not in output:
+                output[item] = 0
+    elif type == 'liwc_alike':
+        output = liwc_alike.main(df['text'][0], result)
+        for item in pd.Series([i for i in relevant_features_name_without_Length['liwc_alike']]):
+            if item not in output:
+                output[item] = 0
+
+    vector_df = pd.DataFrame([output])
+    temp = vector_df[relevant_features_name[type]]
+    temp_norm = temp.div(temp.sum(axis=1), axis=0)
+    
+    #vector_df_norm = (vector_df - vector_df.min()) / (vector_df.max() - vector_df.min())
+    #temp_norm['TrainSubjectId'] = df['TrainSubjectId']
+    X = temp_norm.values[0]
+    return X.reshape(1, -1)
+ 
+
+
 def pre_processing(df, type):
     if type == 'tfidf':
         text_clean = df['text'].apply(lambda x: clean_text(x))
@@ -144,10 +181,11 @@ def pre_processing(df, type):
         X = X.reshape(1, -1)
     
     elif type == 'liwc':
-        X = get_features(df, relevant_features_name, 'liwc')
+        #X = get_features(df, relevant_features_name, 'liwc')
+        X= extract_features_no_addition(df, relevant_features_name_without_Length, 'liwc')
         #print(type(X))
     elif type == 'liwc_alike':
-        X = get_features(df, relevant_features_name, 'liwc_alike')
+        X = extract_features_no_addition(df, relevant_features_name_without_Length, 'liwc_alike')
         #print(X)
     return X
 
