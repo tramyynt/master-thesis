@@ -155,6 +155,7 @@ def extract_features_no_addition(df, relevant_features_name, type):
     vector_df = pd.DataFrame([output])
     temp = vector_df[relevant_features_name[type]]
     temp_norm = temp.div(temp.sum(axis=1), axis=0)
+    temp_norm = temp_norm.fillna(0)
     
     #vector_df_norm = (vector_df - vector_df.min()) / (vector_df.max() - vector_df.min())
     #temp_norm['TrainSubjectId'] = df['TrainSubjectId']
@@ -188,6 +189,8 @@ def pre_processing(df, type):
         X = extract_features_no_addition(df, relevant_features_name_without_Length, 'liwc_alike')
         #print(X)
     return X
+
+
 
 
     

@@ -40,7 +40,7 @@ liwc_alike_rf = joblib.load(os.path.join(HOME_DIR, "liwc_alike_rf.pkl"))
 #get liwc_alike_without_AVG_lg model
 liwc_alike_without_AVG_lg = joblib.load(os.path.join(HOME_DIR, "liwc_alike_without_AVG_lg.pkl"))
 #get liwc_without_AVG_lg model
-liwc_without_AVG_lg = joblib.load(os.path.join(HOME_DIR, "liwc_without_AVG_lg.pkl"))
+liwc_without_AVG_lg = joblib.load(os.path.join(HOME_DIR, "liwc_without_AVG.pkl"))
 
 # ------------------------- FUNCTIONS ------------------------- #
 def get_all_xml_files_in_a_folder(folder_path):
@@ -169,11 +169,11 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
         #print(data)
         #risk = model.predict(data)
             prob = model.predict_proba(data)
-            if prob[0,1] > 0.6:
+            if prob[0,1] > 0.8:
                 risk = 1
-            elif prob[0,1] > 0.5 and all_writings_of_subject.shape[0] > 10:
+            elif prob[0,1] > 0.7 and all_writings_of_subject.shape[0] > 10:
                 risk = 1
-            elif prob[0,1] > 0.4 and all_writings_of_subject.shape[0] > 20:
+            elif prob[0,1] > 0.5 and all_writings_of_subject.shape[0] > 20:
                 risk = 1
             elif prob[0,1] < 0.02:
                 risk = 2
@@ -243,7 +243,7 @@ for chunk_i in range(1, 11):
     all_writings = pd.concat([all_writings, chunk_writings], ignore_index=True)
 
     print(f"Start predicting chunk {chunk_i}")
-    predicted_results = predict_from_chunk_data(liwc_alike_without_AVG_lg, 'liwc_alike', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
+    predicted_results = predict_from_chunk_data(liwc_without_AVG_lg, 'liwc', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
 
     if (chunk_i == 10):
         predicted_results.loc[predicted_results["Risk"] == 0, "Risk"] = 2
