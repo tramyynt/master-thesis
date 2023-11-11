@@ -184,7 +184,7 @@ def pre_processing(df, type):
     elif type == 'liwc':
         #X = get_features(df, relevant_features_name, 'liwc')
         X= extract_features_no_addition(df, relevant_features_name_without_Length, 'liwc')
-        #print(type(X))
+        #print(X)
     elif type == 'liwc_alike':
         X = extract_features_no_addition(df, relevant_features_name_without_Length, 'liwc_alike')
         #print(X)

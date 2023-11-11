@@ -169,11 +169,11 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
         #print(data)
         #risk = model.predict(data)
             prob = model.predict_proba(data)
-            if prob[0,1] > 0.8:
+            if prob[0,1] > 0.95:
                 risk = 1
-            elif prob[0,1] > 0.7 and all_writings_of_subject.shape[0] > 10:
+            elif prob[0,1] > 0.85 and all_writings_of_subject.shape[0] > 15:
                 risk = 1
-            elif prob[0,1] > 0.5 and all_writings_of_subject.shape[0] > 20:
+            elif prob[0,1] > 0.8 and all_writings_of_subject.shape[0] > 20:
                 risk = 1
             elif prob[0,1] < 0.02:
                 risk = 2
