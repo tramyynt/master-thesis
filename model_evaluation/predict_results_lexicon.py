@@ -34,7 +34,7 @@ doc2vec = joblib.load(os.path.join(HOME_DIR, "lg3.pkl"))
 #get liwc model
 liwc_lg = joblib.load(os.path.join(HOME_DIR, "liwc_lg2.pkl"))
 #get liwc_alike model
-liwc_alike_lg = joblib.load(os.path.join(HOME_DIR, "liwc_alike_lg2.pkl"))
+liwc_alike_lg = joblib.load(os.path.join(HOME_DIR, "liwc_alike_lg.pkl"))
 #get liwc_alike_rf model
 liwc_alike_rf = joblib.load(os.path.join(HOME_DIR, "liwc_alike_rf.pkl"))
 #get liwc_alike_without_AVG_lg model
@@ -171,12 +171,12 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
         #print(data)
         #risk = model.predict(data)
             prob = model.predict_proba(data)
-            if prob[0,1] > 0.35:
+            if prob[0,1] > 0.25:
                 risk = 1
-            elif prob[0,1] > 0.3 and all_writings_of_subject.shape[0] > 15:
+            elif prob[0,1] > 0.2 and all_writings_of_subject.shape[0] > 15:
                 risk = 1
-            elif prob[0,1] > 0.25 and all_writings_of_subject.shape[0] > 20:
-                risk = 1
+            # elif prob[0,1] > 0.2 and all_writings_of_subject.shape[0] > 20:
+            #     risk = 1
             elif prob[0,1] < 0.01:
                 risk = 2
             elif prob[0,1] < 0.02 and all_writings_of_subject.shape[0] > 40:
@@ -245,7 +245,7 @@ for chunk_i in range(1, 11):
     all_writings = pd.concat([all_writings, chunk_writings], ignore_index=True)
 
     print(f"Start predicting chunk {chunk_i}")
-    predicted_results = predict_from_chunk_data(liwc_alike_mimx, 'liwc_alike', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
+    predicted_results = predict_from_chunk_data(liwc_alike_lg, 'liwc_alike', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
 
     if (chunk_i == 10):
         predicted_results.loc[predicted_results["Risk"] == 0, "Risk"] = 2

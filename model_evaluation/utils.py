@@ -211,13 +211,14 @@ def pre_processing(df, type):
         X = X.reshape(1, -1)
     
     elif type == 'liwc':
-        #X = get_features(df, relevant_features_name, 'liwc')
-        X= extract_features_no_addition_mimx(df, relevant_features_name_without_Length, 'liwc')
+        X = get_features(df, relevant_features_name, 'liwc')
+        #X= extract_features_no_addition_mimx(df, relevant_features_name_without_Length, 'liwc')
         #smoothing with Savitzky-Golay filter
         #X = savgol_filter(X, window_length=4, polyorder=3, deriv=2)
         #print(X)
     elif type == 'liwc_alike':
-        X = extract_features_no_addition_mimx(df, relevant_features_name_without_Length, 'liwc_alike')
+        X = get_features(df, relevant_features_name, 'liwc')
+        #X = extract_features_no_addition_mimx(df, relevant_features_name_without_Length, 'liwc_alike')
         #X= savgol_filter(X, window_length=4, polyorder=3, deriv=2)
         #print(X)
     return X
