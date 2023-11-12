@@ -17,6 +17,7 @@ from gensim.test.utils import get_tmpfile
 import liwc_alike
 from liwc import Liwc
 import ast
+from scipy.signal import savgol_filter
 
 HOME_DIR = "/home_remote"
 fname = get_tmpfile(os.path.join(HOME_DIR,"master_thesis/model_evaluation/my_doc2vec_model"))
@@ -161,6 +162,34 @@ def extract_features_no_addition(df, relevant_features_name, type):
     #temp_norm['TrainSubjectId'] = df['TrainSubjectId']
     X = temp_norm.values[0]
     return X.reshape(1, -1)
+
+def extract_features_no_addition_mimx(df, relevant_features_name, type):
+    if type == 'liwc':
+        liwc = Liwc(os.path.join(HOME_DIR, "master_thesis/LIWC2007_English100131.dic"))
+        output = liwc.parse(word_tokenize(df['text'][0]))
+        #print(output)
+        #relevant features for liwc except AverageLength
+        for item in pd.Series([i for i in relevant_features_name_without_Length['liwc']]):
+            if item not in output:
+                output[item] = 0
+    elif type == 'liwc_alike':
+        output = liwc_alike.main(df['text'][0], result)
+        for item in pd.Series([i for i in relevant_features_name_without_Length['liwc_alike']]):
+            if item not in output:
+                output[item] = 0
+
+    vector_df = pd.DataFrame([output])
+    temp = vector_df[relevant_features_name[type]]
+    temp_vector = temp.values[0]
+    #print(temp_vector)
+    #normailize temp_vector
+    if temp_vector.max() != 0:
+        X = (temp_vector - temp_vector.min()) / (temp_vector.max() - temp_vector.min())
+    #print(X)
+    else:
+        print('There is a None value in the vector')
+        return None
+    return X.reshape(1, -1)
  
 
 
@@ -183,10 +212,13 @@ def pre_processing(df, type):
     
     elif type == 'liwc':
         #X = get_features(df, relevant_features_name, 'liwc')
-        X= extract_features_no_addition(df, relevant_features_name_without_Length, 'liwc')
+        X= extract_features_no_addition_mimx(df, relevant_features_name_without_Length, 'liwc')
+        #smoothing with Savitzky-Golay filter
+        #X = savgol_filter(X, window_length=4, polyorder=3, deriv=2)
         #print(X)
     elif type == 'liwc_alike':
-        X = extract_features_no_addition(df, relevant_features_name_without_Length, 'liwc_alike')
+        X = extract_features_no_addition_mimx(df, relevant_features_name_without_Length, 'liwc_alike')
+        #X= savgol_filter(X, window_length=4, polyorder=3, deriv=2)
         #print(X)
     return X
 
