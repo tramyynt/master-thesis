@@ -47,7 +47,7 @@ liwc_alike_all_lg = joblib.load(os.path.join(HOME_DIR,'liwc_alike_50_lg.pkl'))
 #get liwc_alike_top_15 percentage
 liwc_alike_15 = joblib.load(os.path.join(HOME_DIR,'liwc_alike_15_lg.pkl'))
 #get liwc_alike_pca
-liwc_alike_pca = joblib.load(os.path.join(HOME_DIR,'liwc_alike_pca.pkl'))
+liwc_alike_pca = joblib.load(os.path.join(HOME_DIR,'model_pca_liwc_alike.pkl'))
 
 # ------------------------- FUNCTIONS ------------------------- #
 def get_all_xml_files_in_a_folder(folder_path):
@@ -177,22 +177,22 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
         #risk = model.predict(data)
             prob = model.predict_proba(data)
             #print(prob)
-            # if prob[0,1] > 0.99:
-            #     risk = 1
-            #print(all_writings_of_subject['NumOfWritings'].iloc[0])
-            if prob[0,1] > 0.9 and all_writings_of_subject['NumOfWritings'].iloc[0] > 20:
+            if prob[0,1] > 0.98:
                 risk = 1
-            elif prob[0,1] > 0.7 and all_writings_of_subject['NumOfWritings'].iloc[0] > 40:
+            #print(all_writings_of_subject['NumOfWritings'].iloc[0])
+            elif prob[0,1] > 0.9 and all_writings_of_subject['NumOfWritings'].iloc[0] > 30:
+                risk = 1
+            elif prob[0,1] > 0.8 and all_writings_of_subject['NumOfWritings'].iloc[0] > 50:
                 risk = 1
             # elif prob[0,1] > 0.8 and all_writings_of_subject.shape[0] > 60:
             #     risk = 1
-            elif prob[0,1] > 0.6 and all_writings_of_subject['NumOfWritings'].iloc[0] > 60:
-                risk = 1
-            elif prob[0,1] < 0.05:
+            # elif prob[0,1] > 0.8 and all_writings_of_subject['NumOfWritings'].iloc[0] > 150:
+            #     risk = 1
+            elif prob[0,1] < 0.2:
                 risk = 2
-            elif prob[0,1] < 0.1 and all_writings_of_subject['NumOfWritings'].iloc[0] > 10:
+            elif prob[0,1] < 0.4 and all_writings_of_subject['NumOfWritings'].iloc[0] > 30:
                 risk = 2
-            elif prob[0,1] < 0.3 and all_writings_of_subject['NumOfWritings'].iloc[0] > 20:
+            elif prob[0,1] < 0.6 and all_writings_of_subject['NumOfWritings'].iloc[0] > 50:
                  risk = 2
             else:
                 risk = 0
