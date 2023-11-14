@@ -8,7 +8,6 @@ import re
 import numpy as np
 from nltk import word_tokenize, ngrams
 from nltk.corpus import stopwords
-import gensim
 from sklearn.feature_extraction.text import TfidfVectorizer
 import random
 import joblib
@@ -43,6 +42,12 @@ liwc_alike_without_AVG_lg = joblib.load(os.path.join(HOME_DIR, "liwc_alike_witho
 liwc_without_AVG_lg = joblib.load(os.path.join(HOME_DIR, "liwc_without_AVG.pkl"))
 #get liwc_alike_mimx
 liwc_alike_mimx = joblib.load(os.path.join(HOME_DIR,'liwc_alike_mimx.plk'))
+#get liwc_alike_top_50
+liwc_alike_all_lg = joblib.load(os.path.join(HOME_DIR,'liwc_alike_50_lg.pkl'))
+#get liwc_alike_top_15 percentage
+liwc_alike_15 = joblib.load(os.path.join(HOME_DIR,'liwc_alike_15_lg.pkl'))
+#get liwc_alike_pca
+liwc_alike_pca = joblib.load(os.path.join(HOME_DIR,'liwc_alike_pca.pkl'))
 
 # ------------------------- FUNCTIONS ------------------------- #
 def get_all_xml_files_in_a_folder(folder_path):
@@ -171,17 +176,23 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
         #print(data)
         #risk = model.predict(data)
             prob = model.predict_proba(data)
-            if prob[0,1] > 0.25:
-                risk = 1
-            elif prob[0,1] > 0.2 and all_writings_of_subject.shape[0] > 15:
-                risk = 1
-            # elif prob[0,1] > 0.2 and all_writings_of_subject.shape[0] > 20:
+            #print(prob)
+            # if prob[0,1] > 0.99:
             #     risk = 1
-            elif prob[0,1] < 0.01:
+            #print(all_writings_of_subject['NumOfWritings'].iloc[0])
+            if prob[0,1] > 0.9 and all_writings_of_subject['NumOfWritings'].iloc[0] > 20:
+                risk = 1
+            elif prob[0,1] > 0.7 and all_writings_of_subject['NumOfWritings'].iloc[0] > 40:
+                risk = 1
+            # elif prob[0,1] > 0.8 and all_writings_of_subject.shape[0] > 60:
+            #     risk = 1
+            elif prob[0,1] > 0.6 and all_writings_of_subject['NumOfWritings'].iloc[0] > 60:
+                risk = 1
+            elif prob[0,1] < 0.05:
                 risk = 2
-            elif prob[0,1] < 0.02 and all_writings_of_subject.shape[0] > 40:
+            elif prob[0,1] < 0.1 and all_writings_of_subject['NumOfWritings'].iloc[0] > 10:
                 risk = 2
-            elif prob[0,1] < 0.04 and all_writings_of_subject.shape[0] > 60:
+            elif prob[0,1] < 0.3 and all_writings_of_subject['NumOfWritings'].iloc[0] > 20:
                  risk = 2
             else:
                 risk = 0
@@ -245,7 +256,7 @@ for chunk_i in range(1, 11):
     all_writings = pd.concat([all_writings, chunk_writings], ignore_index=True)
 
     print(f"Start predicting chunk {chunk_i}")
-    predicted_results = predict_from_chunk_data(liwc_alike_lg, 'liwc_alike', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
+    predicted_results = predict_from_chunk_data(liwc_alike_pca, 'liwc_alike', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
 
     if (chunk_i == 10):
         predicted_results.loc[predicted_results["Risk"] == 0, "Risk"] = 2
@@ -253,4 +264,7 @@ for chunk_i in range(1, 11):
     write_predicted_results_to_file(predicted_results, chunk_i)
 
     previous_predicted_results = predicted_results
+
+
+
 

@@ -18,6 +18,7 @@ import liwc_alike
 from liwc import Liwc
 import ast
 from scipy.signal import savgol_filter
+from sklearn.decomposition import PCA
 
 HOME_DIR = "/home_remote"
 fname = get_tmpfile(os.path.join(HOME_DIR,"master_thesis/model_evaluation/my_doc2vec_model"))
@@ -25,7 +26,7 @@ fname2 = get_tmpfile(os.path.join(HOME_DIR,"master_thesis/model_evaluation/my_do
 #load model
 doc2vec_model = Doc2Vec.load(fname)
 doc2vec_model2 = Doc2Vec.load(fname2)
-
+pca = joblib.load(os.path.join(HOME_DIR, "pca.pkl"))
 
 #feature names
 relevant_features_name ={'liwc': ['i', 'AverageLength', 'friend', 'sad', 'family', 'feel', 'health',
@@ -49,6 +50,46 @@ relevant_features_name_without_Length ={'liwc': ['i', 'friend', 'sad', 'family',
        'Social Processes', 'Perceptual Processes', 'Insight',
        'Cognitive Processes', 'Motion', 'Positive Emotions', 'Tentative',
        'Ppronouns']}
+features = {'liwc':['affect', 'filler', 'posemo', 'time', 'funct', 'article', 'cogmech',
+       'cause', 'work', 'pronoun', 'ppron', 'shehe', 'social', 'verb',
+       'present', 'insight', 'relig', 'tentat', 'preps', 'achieve', 'space',
+       'relativ', 'auxverb', 'ipron', 'conj', 'excl', 'assent', 'percept',
+       'feel', 'adverb', 'negate', 'inhib', 'we', 'incl', 'past', 'negemo',
+       'anger', 'death', 'bio', 'ingest', 'humans', 'motion', 'future',
+       'discrep', 'certain', 'AverageLength', 'NumOfWritings', 'see',
+       'leisure', 'body', 'i', 'they', 'money', 'sad', 'quant', 'health',
+       'you', 'anx', 'number', 'sexual', 'hear', 'nonfl', 'family', 'swear',
+       'home', 'friend'],
+            'liwc_alike': ['Present tense', 'Positive Emotions', 'Articles', 'Work', 'Pronouns',
+       'Ppronouns', 'Shehe', 'Social Processes', 'Friends', 'Humans',
+       'Prepositions', 'Cognitive Processes', 'Insight',
+       'Perceptual Processes', 'ipron', 'auxverb', 'Conjunctions', 'Negations',
+       'Exclusive', 'Causation', 'Relativity', 'Adverbs', 'Space', 'We',
+       'Inclusive', 'Seeing', 'Negative Emotions', 'Motion', 'Discrepancy',
+       'You', 'I', 'Time', 'AverageLength', 'NumOfWritings', 'Sexuality',
+       'Tentative', 'Past tense', 'Biological Processes', 'Body', 'Health',
+       'Future tense', 'Certainty', 'Nonfluencies', 'Leisure', 'Achievement',
+       'Home', 'They', 'Numbers', 'Money', 'Anger', 'Religion', 'Assent',
+       'Sadness', 'Feeling', 'Family', 'Death', 'Affective Processes',
+       'Anxiety', 'Hearing', 'Inhibition', 'Fillers']}
+features_15 = {'liwc':['i', 'adverb', 'excl', 'sad', 'health', 'anx', 'pronoun', 'ppron',
+       'affect', 'conj', 'cogmech', 'tentat', 'negemo', 'verb', 'discrep'],
+               'liwc_alike': ['I', 'Affective Processes', 'Anxiety', 'Sadness', 'Insight',
+       'Social Processes', 'Tentative', 'Cognitive Processes', 'Feeling',
+       'Negative Emotions', 'Health', 'Adverbs', 'Ppronouns', 'AverageLength',
+       'Perceptual Processes']}
+
+features_pca = {'liwc_alike':['auxverb', 'Cognitive Processes', 'Insight', 'Inclusive', 'Work',
+       'Perceptual Processes', 'Assent', 'Pronouns', 'ipron', 'Causation',
+       'Past tense', 'Seeing', 'Feeling', 'Articles', 'Certainty', 'Ppronouns',
+       'I', 'Prepositions', 'Tentative', 'Exclusive', 'Affective Processes',
+       'Negative Emotions', 'Achievement', 'Social Processes', 'Friends',
+       'Time', 'Relativity', 'Motion', 'Present tense', 'Discrepancy',
+       'Negations', 'Conjunctions', 'Shehe', 'Humans', 'They', 'Adverbs',
+       'Space', 'We', 'Positive Emotions', 'Health', 'Anxiety', 'Anger',
+       'Hearing', 'Numbers', 'Future tense', 'Family', 'Leisure', 'You',
+       'Sexuality', 'Body', 'Inhibition', 'Home', 'Biological Processes',
+       'Sadness', 'Nonfluencies', 'Death', 'Money', 'Religion', 'Fillers']}
 
 #liwc_alike data
 liwc2 = pd.read_excel('/home_remote/dic_avg100_annotated_official.xlsx')
@@ -138,6 +179,8 @@ def get_features(df,relevant_features_name, type):
         return None
     return X.reshape(1, -1)
 
+
+
 def extract_features_no_addition(df, relevant_features_name, type):
     if type == 'liwc':
         liwc = Liwc(os.path.join(HOME_DIR, "master_thesis/LIWC2007_English100131.dic"))
@@ -191,7 +234,81 @@ def extract_features_no_addition_mimx(df, relevant_features_name, type):
         return None
     return X.reshape(1, -1)
  
+def get_features_all(df, type):
+    #print(df)
+    if type == 'liwc':
+        liwc = Liwc(os.path.join(HOME_DIR, "master_thesis/LIWC2007_English100131.dic"))
+        output = liwc.parse(word_tokenize(df['text'][0]))
+        #print(output)
+        #relevant features for liwc except AverageLength
+        for item in pd.Series([i for i in features['liwc']]):
+            if item not in output:
+                output[item] = 0
+    elif type == 'liwc_alike':
+        output = liwc_alike.main(df['text'][0], result)
+        for item in pd.Series([i for i in features['liwc_alike']]):
+            if item not in output:
+                output[item] = 0
 
+    vector_df = pd.DataFrame([output])
+    #vector_df = pd.DataFrame(df['vector'].tolist(), index=df.index)
+    vector_df_norm = (vector_df - vector_df.min()) / (vector_df.max() - vector_df.min())
+    #vector_df_norm['Label'] = df['Label']
+    #vector_df_norm['TrainSubjectId'] = df['TrainSubjectId']
+    vector_df_norm = vector_df_norm.fillna(0)
+
+    X = vector_df_norm
+    #print(X)
+    return X
+
+def get_features_15(df,features_15, type):
+    #print(df)
+    if type == 'liwc':
+        liwc = Liwc(os.path.join(HOME_DIR, "master_thesis/LIWC2007_English100131.dic"))
+        output = liwc.parse(word_tokenize(df['text'][0]))
+        #print(output)
+        #relevant features for liwc except AverageLength
+        for item in pd.Series([i for i in features_15['liwc'] if i != 'AverageLength']):
+            if item not in output:
+                output[item] = 0
+    elif type == 'liwc_alike':
+        output = liwc_alike.main(df['text'][0], result)
+        for item in pd.Series([i for i in features_15['liwc_alike'] if i != 'AverageLength']):
+            if item not in output:
+                output[item] = 0
+
+    average_length = df['AverageLength'][0]
+    output['AverageLength'] = average_length
+
+    vector_df = pd.DataFrame([output])
+    temp = vector_df[features_15[type]]
+    temp_norm = temp.div(temp.sum(axis=1), axis=0)
+    temp_norm = temp_norm.fillna(0)
+    X = temp_norm
+    return X
+
+
+def get_feature_withPCA(df,pca, features_pca,type):
+        #print(df)
+    if type == 'liwc':
+        liwc = Liwc(os.path.join(HOME_DIR, "master_thesis/LIWC2007_English100131.dic"))
+        output = liwc.parse(word_tokenize(df['text'][0]))
+        #print(output)
+        #relevant features for liwc except AverageLength
+        for item in pd.Series([i for i in features_pca['liwc']]):
+            if item not in output:
+                output[item] = 0
+    elif type == 'liwc_alike':
+        output = liwc_alike.main(df['text'][0], result)
+        for item in pd.Series([i for i in features_pca['liwc_alike']]):
+            if item not in output:
+                output[item] = 0
+    
+    vector_df = pd.DataFrame(output, index=df.index)
+    vector_df_norm = vector_df.div(vector_df.sum(axis=1), axis=0)
+    vector_df_norm = vector_df_norm.fillna(0)
+    X = pca.transform(vector_df_norm)
+    return X
 
 def pre_processing(df, type):
     if type == 'tfidf':
@@ -211,15 +328,21 @@ def pre_processing(df, type):
         X = X.reshape(1, -1)
     
     elif type == 'liwc':
-        X = get_features(df, relevant_features_name, 'liwc')
+        X = get_features_all(df, 'liwc')
+        #X = get_features(df, relevant_features_name, 'liwc')
         #X= extract_features_no_addition_mimx(df, relevant_features_name_without_Length, 'liwc')
         #smoothing with Savitzky-Golay filter
         #X = savgol_filter(X, window_length=4, polyorder=3, deriv=2)
         #print(X)
+
     elif type == 'liwc_alike':
-        X = get_features(df, relevant_features_name, 'liwc')
+
+        #X = get_features_all(df, 'liwc_alike')
+        #X = get_features(df, relevant_features_name, 'liwc')
         #X = extract_features_no_addition_mimx(df, relevant_features_name_without_Length, 'liwc_alike')
         #X= savgol_filter(X, window_length=4, polyorder=3, deriv=2)
+        X = get_feature_withPCA(df,pca,features_pca, 'liwc_alike')
+
         #print(X)
     return X
 
