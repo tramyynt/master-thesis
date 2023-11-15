@@ -119,18 +119,18 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
         #risk = model.predict(data)
         prob = model.predict_proba(data)
         if type == 'doc2vec':
-            if prob[0,1] > 0.5:
+            if prob[0,1] > 0.6:
                 risk = 1
-            elif prob[0,1] > 0.45 and all_writings_of_subject.shape[0] > 10:
+            elif prob[0,1] > 0.5 and all_writings_of_subject.shape[0] > 10:
                 risk = 1
             elif prob[0,1] > 0.4 and all_writings_of_subject.shape[0] > 15:
                 risk = 1
             elif prob[0,1] < 0.05:
                 risk = 2
-            elif prob[0,1] < 0.15 and all_writings_of_subject.shape[0] > 10:
+            elif prob[0,1] < 0.1 and all_writings_of_subject.shape[0] > 30:
                 risk = 2
-            # elif prob[0,1] < 0.1 and all_writings_of_subject.shape[0] > 20:
-            #     risk = 2
+            elif prob[0,1] < 0.15 and all_writings_of_subject.shape[0] > 50:
+                risk = 2
             else:
                 risk = 0
         else:
