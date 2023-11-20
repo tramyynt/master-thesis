@@ -15,6 +15,9 @@ import joblib
 import utils
 import subprocess
 import string
+import warnings
+import textstat
+warnings.filterwarnings("ignore")
 pd.options.mode.chained_assignment = None
 
 HOME_DIR = "/home_remote"
@@ -30,6 +33,11 @@ tfidf = joblib.load(os.path.join(HOME_DIR, "lg1.pkl"))
 #doc2vec = joblib.load(os.path.join(HOME_DIR, "conventional_model.pkl"))
 doc2vec = joblib.load(os.path.join(HOME_DIR, "lg3.pkl"))
 liwc_alike_pca = joblib.load(os.path.join(HOME_DIR,'model_pca_liwc_alike.pkl'))
+#get liwc_alike_crafted_23
+liwc_alike_crafted_23 = joblib.load( os.path.join(HOME_DIR,'alike_handcrafted_liwc23.pkl'))
+#get liwc_crafted_23
+liwc_crafted_23 = joblib.load(os.path.join(HOME_DIR,'handcrafted_liwc23.pkl'))
+
 
 # ------------------------- FUNCTIONS ------------------------- #
 def get_all_xml_files_in_a_folder(folder_path):
@@ -116,7 +124,32 @@ def construct_liwc_input(df):
 
     return result_df
 
+def construct_liwc_input_crafted(df):
+  """
+  params: df - The positive/negative dataframe loaded from pickle
+    The df is expected to has these columns "Title", "Date", "Text", "SubjectId"
+  params: label - The label need to be assigned to result dataframe
 
+  returns: A dataframe contains "SubjectId", "AverageLength", "Text", "NumOfWritings", "Title"
+  """
+
+  df['text'] = df['Text']+ df['Title']
+  df['Token'] = df['text'].apply(lambda x: word_tokenize(x))
+  df['AVG_SEN'] = df['text'].apply(lambda x:  textstat.avg_sentence_length(x))
+  df['AVG_PER_WORD'] = df['text'].apply(lambda x:  textstat.avg_letter_per_word(x))
+  df['LWF'] = df['text'].apply(lambda x: textstat.linsear_write_formula(x))
+  df['FRE'] = df['text'].apply(lambda x: textstat.flesch_reading_ease(x))
+  df['DCR'] = df['text'].apply(lambda x: textstat.dale_chall_readability_score(x))
+  df['FOG'] = df['text'].apply(lambda x: textstat.gunning_fog(x))
+  
+  result_df = df.groupby('SubjectId').agg({'LWF': 'mean', 'FRE': 'mean', 'DCR': 'mean', 'FOG': 'mean','AVG_SEN':'mean', 'AVG_PER_WORD': 'mean','Text': 'count'}).reset_index()
+ 
+  #join text per user
+  joined_text_df = df.groupby('SubjectId')['text'].apply(' '.join).reset_index()
+  result_df = result_df.merge(joined_text_df, on="SubjectId")
+  result_df.rename(columns={'Text': 'NumOfWritings'}, inplace=True)
+  
+  return result_df
 
 def predict_from_chunk_data(model1, type1,model2, type2, all_writings, all_users, previous_predicted_results = None):
     """
@@ -152,7 +185,7 @@ def predict_from_chunk_data(model1, type1,model2, type2, all_writings, all_users
 
         #text = title_and_text.str.cat(sep=' '))
         #print(all_writings_of_subject)
-        all_writings_of_subject_liwc = construct_liwc_input(all_writings_of_subject)
+        all_writings_of_subject_liwc = construct_liwc_input_crafted(all_writings_of_subject)
         data1 = utils.pre_processing(all_writings_of_subject_liwc, type1)
         data2 = utils.pre_processing(all_writings_of_subject, type2)
         #print(data)
@@ -164,18 +197,18 @@ def predict_from_chunk_data(model1, type1,model2, type2, all_writings, all_users
             prob2 = model2.predict_proba(data2)
             #average prob
             prob = np.mean([prob1, prob2], axis=0)
-            if prob[0,1] > 0.7:
+            if prob[0,1] > 0.9:
                 risk = 1
-            elif prob[0,1] > 0.6 and all_writings_of_subject.shape[0] > 10:
+            elif prob[0,1] > 0.8 and all_writings_of_subject.shape[0] > 20:
                 risk = 1
-            elif prob[0,1] > 0.5 and all_writings_of_subject.shape[0] > 15:
-                risk = 1
-            elif prob[0,1] < 0.05:
+            elif prob[0,1] > 0.7 and all_writings_of_subject.shape[0] > 30:
+                 risk = 1
+            elif prob[0,1] < 0.1:
                 risk = 2
-            elif prob[0,1] < 0.15 and all_writings_of_subject.shape[0] > 10:
+            elif prob[0,1] < 0.2 and all_writings_of_subject.shape[0] > 20:
                 risk = 2
-            # elif prob[0,1] < 0.1 and all_writings_of_subject.shape[0] > 20:
-            #     risk = 2
+            elif prob[0,1] < 0.3 and all_writings_of_subject.shape[0] > 30:
+                risk = 2
             else:
                 risk = 0
         # risk = random.randint(0, 1)
@@ -238,7 +271,7 @@ for chunk_i in range(1, 11):
     all_writings = pd.concat([all_writings, chunk_writings], ignore_index=True)
 
     print(f"Start predicting chunk {chunk_i}")
-    predicted_results = predict_from_chunk_data(liwc_alike_pca, 'liwc_alike',tfidf, 'tfidf', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
+    predicted_results = predict_from_chunk_data(liwc_crafted_23, 'liwc',doc2vec, 'doc2vec', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
 
     if (chunk_i == 10):
         predicted_results.loc[predicted_results["Risk"] == 0, "Risk"] = 2

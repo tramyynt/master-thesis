@@ -19,6 +19,7 @@ from liwc import Liwc
 import ast
 from scipy.signal import savgol_filter
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 HOME_DIR = "/home_remote"
 fname = get_tmpfile(os.path.join(HOME_DIR,"master_thesis/model_evaluation/my_doc2vec_model"))
@@ -27,7 +28,7 @@ fname2 = get_tmpfile(os.path.join(HOME_DIR,"master_thesis/model_evaluation/my_do
 doc2vec_model = Doc2Vec.load(fname)
 doc2vec_model2 = Doc2Vec.load(fname2)
 pca = joblib.load(os.path.join(HOME_DIR, "pca.pkl"))
-
+scaler_alike = joblib.load(os.path.join(HOME_DIR, "scaler_alike.pkl"))
 #feature names
 relevant_features_name ={'liwc': ['i', 'AverageLength', 'friend', 'sad', 'family', 'feel', 'health',
        'sexual', 'anx', 'body', 'bio', 'ppron', 'filler', 'shehe', 'adverb',
@@ -39,6 +40,17 @@ relevant_features_name ={'liwc': ['i', 'AverageLength', 'friend', 'sad', 'family
        'Social Processes', 'Perceptual Processes', 'Insight',
        'Cognitive Processes', 'Motion', 'Positive Emotions', 'Tentative',
        'Ppronouns']}
+relevant_features_name_23 = {'liwc': ['i', 'friend', 'sad', 'family', 'feel', 'health',
+       'sexual', 'anx', 'body', 'bio', 'ppron', 'filler', 'shehe', 'adverb',
+       'swear', 'humans', 'excl', 'assent', 'discrep', 'you', 'pronoun',
+       'negemo', 'past'],
+                        'liwc_alike': ['Anxiety', 'I', 'Sadness', 'Affective Processes',
+       'Sexuality', 'Family', 'Friends', 'Fillers', 'Health', 'Feeling',
+       'Humans', 'Biological Processes', 'Time', 'Body', 'Negative Emotions',
+       'Social Processes', 'Perceptual Processes', 'Insight',
+       'Cognitive Processes', 'Motion', 'Positive Emotions', 'Tentative',
+       'Ppronouns']}
+
 
 relevant_features_name_without_Length ={'liwc': ['i', 'friend', 'sad', 'family', 'feel', 'health',
        'sexual', 'anx', 'body', 'bio', 'ppron', 'filler', 'shehe', 'adverb',
@@ -310,6 +322,99 @@ def get_feature_withPCA(df,pca, features_pca,type):
     X = pca.transform(vector_df_norm)
     return X
 
+def get_ngrams(text, n):
+  n_grams = ngrams(word_tokenize(text), n)
+  return [ ' '.join(grams) for grams in n_grams]
+
+def frequency_distribution(grams, word):
+    ls = []
+    for i in grams:
+        count = 0
+        for j in i:
+            if j == word:
+                count += 1
+    ls.append(count)
+    return ls
+
+def get_features_crafted_23(df, relevant_features_name_23, type):
+    hand_crafted = ['LWF', 'FOG', 'FRE', 'DCR', 'AVG_SEN', 'AVG_PER_WORD']
+    if type == 'liwc':
+        liwc = Liwc(os.path.join(HOME_DIR, "master_thesis/LIWC2007_English100131.dic"))
+        output = liwc.parse(word_tokenize(df['text'][0]))
+        #print(output)
+        #relevant features for liwc except AverageLength
+        for item in pd.Series([i for i in relevant_features_name_23['liwc']]):
+            if item not in output:
+                output[item] = 0
+    elif type == 'liwc_alike':
+        output = liwc_alike.main(df['text'][0], result)
+        for item in pd.Series([i for i in relevant_features_name_23['liwc_alike']]):
+            if item not in output:
+                output[item] = 0
+    
+    bigram =[ get_ngrams(i, 2) for i in df['text']]
+    unigram = [get_ngrams(i, 1) for i in df['text']]
+
+    depression = frequency_distribution(bigram, 'my depression')
+    anxiety = frequency_distribution(bigram, 'my anxiety')
+    count_I = frequency_distribution(unigram, 'I')
+
+    vector_df = pd.DataFrame([output])
+    re = vector_df[relevant_features_name_23[type]]
+    for i in hand_crafted:
+        re[i] = df[i]
+    re['Depression'] = depression
+    re['My Anxiety'] = anxiety
+    re['word_I'] = count_I
+    X = re
+    return X
+
+
+def get_features_crafted_full(df, type):
+    hand_crafted = [
+        'POS', 'PRP', 'VBD', 'Length_Title', 'Month', 'Hour',
+       'LWF', 'FRE', 'DCR', 'FOG', 'AVG_SEN', 'AVG_PER_WORD', 'My_Depression',
+       'My_Anxiety', 'My_Therapist', 'word_I', 'word_I_title',
+       'Diagnosed_Depression', 'Antidepressants', 'NumOfWritings']
+    
+    relevant_features_name23 ={'liwc': ['i', 'friend', 'sad', 'family', 'feel', 'health',
+       'sexual', 'anx', 'body', 'bio', 'ppron', 'filler', 'shehe', 'adverb',
+       'swear', 'humans', 'excl', 'assent', 'discrep', 'you', 'pronoun',
+       'negemo', 'past'],
+                        'liwc_alike': ['Anxiety', 'I', 'Sadness', 'Affective Processes',
+       'Sexuality', 'Family', 'Friends', 'Fillers', 'Health', 'Feeling',
+       'Humans', 'Biological Processes', 'Time', 'Body', 'Negative Emotions',
+       'Social Processes', 'Perceptual Processes', 'Insight',
+       'Cognitive Processes', 'Motion', 'Positive Emotions', 'Tentative',
+       'Ppronouns']}
+    if type == 'liwc':
+        liwc = Liwc(os.path.join(HOME_DIR, "master_thesis/LIWC2007_English100131.dic"))
+        output = liwc.parse(word_tokenize(df['text'][0]))
+    #print(output)
+    #relevant features for liwc except AverageLength
+        for item in pd.Series([i for i in relevant_features_name23['liwc']]):
+            if item not in output:
+                output[item] = 0
+    elif type == 'liwc_alike':
+        output = liwc_alike.main(df['text'][0], result)
+        for item in pd.Series([i for i in relevant_features_name23['liwc_alike']]):
+            if item not in output:
+                output[item] = 0
+    vector_df = pd.DataFrame(output, index=df.index)
+    #vector_df_norm = vector_df.div(vector_df.sum(axis=1), axis=0)
+    #vector_df_norm['Label'] = df['Label']
+    #vector_df_norm['TrainSubjectId'] = df['TrainSubjectId']
+    vector_df= vector_df.fillna(0)
+    #corr = vector_df_norm.corr()
+    #corr_label = corr['Label'].sort_values(ascending=False)
+    #relevant_features = corr_label[1:15]
+    #relevant_features_name = relevant_features.index.values
+    re = vector_df[relevant_features_name23[type]]
+    for i in hand_crafted:
+        re[i] = df[i]
+    X = re
+    return X
+
 def pre_processing(df, type):
     if type == 'tfidf':
         text_clean = df['text'].apply(lambda x: clean_text(x))
@@ -329,10 +434,11 @@ def pre_processing(df, type):
     
     elif type == 'liwc':
        # X = get_features_all(df, 'liwc')
-        X = get_features(df, relevant_features_name, 'liwc')
+        #X = get_features(df, relevant_features_name, 'liwc')
         #X= extract_features_no_addition_mimx(df, relevant_features_name_without_Length, 'liwc')
         #smoothing with Savitzky-Golay filter
         #X = savgol_filter(X, window_length=4, polyorder=3, deriv=2)
+        X = get_features_crafted_23(df, relevant_features_name_23, 'liwc')
         #print(X)
 
     elif type == 'liwc_alike':
@@ -341,8 +447,10 @@ def pre_processing(df, type):
         #X = get_features(df, relevant_features_name, 'liwc_alike')
         #X = extract_features_no_addition_mimx(df, relevant_features_name_without_Length, 'liwc_alike')
         #X= savgol_filter(X, window_length=4, polyorder=3, deriv=2)
-        X = get_feature_withPCA(df,pca,features_pca, 'liwc_alike')
-
+        #X = get_feature_withPCA(df,pca,features_pca, 'liwc_alike')
+       # X = get_features_crafted_23(df, relevant_features_name_23, 'liwc_alike')
+        X1 = get_features_crafted_full(df,'liwc_alike')
+        X = scaler_alike.transform(X1)
         #print(X)
     return X
 

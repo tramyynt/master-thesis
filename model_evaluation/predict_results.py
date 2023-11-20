@@ -113,23 +113,23 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
         #join all text in each individual_writings
         all_writings_of_subject['text'] = all_writings_of_subject['Title'] + all_writings_of_subject['Text']
         #text = title_and_text.str.cat(sep=' '))
-        print(all_writings_of_subject)
+        #print(all_writings_of_subject)
         data = utils.pre_processing(all_writings_of_subject, type)
         #print(data)
         #risk = model.predict(data)
         prob = model.predict_proba(data)
         if type == 'doc2vec':
-            if prob[0,1] > 0.6:
+            if prob[0,1] > 0.7:
                 risk = 1
-            elif prob[0,1] > 0.5 and all_writings_of_subject.shape[0] > 10:
+            elif prob[0,1] > 0.6 and all_writings_of_subject.shape[0] > 10:
                 risk = 1
-            elif prob[0,1] > 0.4 and all_writings_of_subject.shape[0] > 15:
+            elif prob[0,1] > 0.5 and all_writings_of_subject.shape[0] > 15:
                 risk = 1
             elif prob[0,1] < 0.05:
                 risk = 2
-            elif prob[0,1] < 0.1 and all_writings_of_subject.shape[0] > 30:
+            elif prob[0,1] < 0.1 and all_writings_of_subject.shape[0] > 10:
                 risk = 2
-            elif prob[0,1] < 0.15 and all_writings_of_subject.shape[0] > 50:
+            elif prob[0,1] < 0.15 and all_writings_of_subject.shape[0] > 20:
                 risk = 2
             else:
                 risk = 0
