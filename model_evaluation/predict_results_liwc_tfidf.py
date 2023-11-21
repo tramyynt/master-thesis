@@ -39,6 +39,13 @@ liwc_alike_crafted_23 = joblib.load( os.path.join(HOME_DIR,'alike_handcrafted_li
 liwc_crafted_23 = joblib.load(os.path.join(HOME_DIR,'handcrafted_liwc23.pkl'))
 
 
+#get liwc_alike_crafted_full
+liwc_alike_crated_full = joblib.load(os.path.join(HOME_DIR, "liwc_alike_full_crafted.pkl"))
+
+#get liwc_crafted_full
+liwc_crafted_full = joblib.load(os.path.join(HOME_DIR, "liwc_full_crafted.pkl"))
+
+
 # ------------------------- FUNCTIONS ------------------------- #
 def get_all_xml_files_in_a_folder(folder_path):
     xml_files = []
@@ -49,8 +56,9 @@ def get_all_xml_files_in_a_folder(folder_path):
 
     return xml_files
 
+
 def extract_data_from_xml(xml_file, nth_chunk):
-    individual_writings = pd.DataFrame(columns = ['SubjectId', 'Title', 'Text', 'Chunk', 'DataPath'])
+    individual_writings = pd.DataFrame(columns = ['SubjectId', 'Title', 'Text', 'Date', 'Chunk', 'DataPath'])
     try:
         tree = ET.parse(xml_file)
         root = tree.getroot()
@@ -59,14 +67,20 @@ def extract_data_from_xml(xml_file, nth_chunk):
 
         for writing in root.findall('WRITING'):
             title_tag = writing.find('TITLE')
+            date_tag = writing.find('DATE')
             if title_tag is None:
                 writing_title = ""
             else:
                 writing_title = title_tag.text.strip()
+            
+            if date_tag is None:
+                writing_date = "NaN"
+            else:
+                writing_date = date_tag.text.strip()
             writing_text = writing.find('TEXT').text.strip()
             individual_writings = pd.concat([
                 individual_writings,
-                pd.DataFrame.from_dict({ "SubjectId": [subject_id], "Title": [writing_title], "Text": [writing_text], "Chunk": [nth_chunk], "DataPath": [xml_file] })
+                pd.DataFrame.from_dict({ "SubjectId": [subject_id], "Title": [writing_title], "Text": [writing_text], "Chunk": [nth_chunk], "DataPath": [xml_file], 'Date':[writing_date] })
             ], ignore_index=True)
 
         # individual_writings['TitleAndText'] = individual_writings['Title'] + individual_writings['Text']
@@ -74,8 +88,6 @@ def extract_data_from_xml(xml_file, nth_chunk):
     except Exception as e:
         print(f"[ERROR] Can't parsing {xml_file}: {str(e)}")
         return None
-
-
 
 def has_subject_id_been_predicted(subject_id, previous_predicted_results):
     if previous_predicted_results is None:
@@ -151,6 +163,105 @@ def construct_liwc_input_crafted(df):
   
   return result_df
 
+
+
+def get_ngrams(text, n):
+  n_grams = ngrams(word_tokenize(text), n)
+  return [ ' '.join(grams) for grams in n_grams]
+
+def frequency_distribution(grams, word):
+    ls = []
+    for i in grams:
+        count = 0
+        for j in i:
+            if j == word:
+                count += 1
+        ls.append(count)
+    return ls
+
+#count number of words in pos_tagging
+def count_word_pos_tagging(pos_tagging, word):
+    count = 0
+    for i in pos_tagging:
+        if i[1] == word:
+            count += 1
+    return count
+
+#count number of words in pos_tagging but word in the list
+def count_word_list(tokens, list_word):
+    count = 0
+    for i in tokens:
+        if i in list_word:
+            count += 1
+    return count
+
+
+def construct_liwc_input_crafted_full(df):
+
+  df['Date'] = pd.to_datetime(df['Date'])
+  df['text'] = df['Text']+ df['Title']
+  df['Token'] = df['text'].apply(lambda x: word_tokenize(x))
+  df['AVG_SEN'] = df['text'].apply(lambda x:  textstat.avg_sentence_length(x))
+  df['AVG_PER_WORD'] = df['text'].apply(lambda x:  textstat.avg_letter_per_word(x))
+  df['LWF'] = df['text'].apply(lambda x: textstat.linsear_write_formula(x))
+  df['FRE'] = df['text'].apply(lambda x: textstat.flesch_reading_ease(x))
+  df['DCR'] = df['text'].apply(lambda x: textstat.dale_chall_readability_score(x))
+  df['FOG'] = df['text'].apply(lambda x: textstat.gunning_fog(x))
+  
+
+  #count number of I, my depression, my anxiety, in the text
+  bigrams = df['Text'].apply(lambda x: get_ngrams(x, 2))
+  unigrams = df['Text'].apply(lambda x: get_ngrams(x, 1))
+  unigrams_title = df['Title'].apply(lambda x: get_ngrams(x, 1))
+  depression = frequency_distribution(bigrams, 'my depression')
+  anxiety = frequency_distribution(bigrams, 'my anxiety')
+  therapist = frequency_distribution(bigrams, 'my therapist')
+  count_I = frequency_distribution(unigrams, 'I')
+  count_I_title = frequency_distribution(unigrams_title, 'I')
+  df['My_Therapist'] = therapist
+  df['My_Depression'] = depression
+  df['My_Anxiety'] = anxiety
+  df['word_I'] = count_I
+  df['word_I_title'] = count_I_title
+  #count if unigrams contain "Zoloft", "Celexa", "Lexapro", "Paxil", "Pexeva", "Brisdelle", "Luvox"
+  antidepression = ["Zoloft", "Celexa", "Lexapro", "Paxil", "Pexeva", "Brisdelle", "Luvox"]
+  df['Antidepressants'] = df['Token'].apply(lambda x: count_word_list(x, antidepression))
+
+
+
+  #return boolean if the text contains "I was diagnosed with depression" or "I was diagnosed with anxiety" or "I've been diagnosed with depression"
+  df['Diagnosed_Depression'] = df['Text'].apply(lambda x: 1 if 'I was diagnosed with depression' in x or 'I was diagnosed with anxiety' in x or 'I\'ve been diagnosed with depression' in x else 0)
+
+  #POS tagging to count number of possessive pronouns, personal pronouns, past tense verbs.
+  temp = df['Token'].apply(lambda x: nltk.pos_tag(x))
+  df['POS'] = [count_word_pos_tagging(i, 'PRP$') for i in temp]
+  df['PRP'] = [count_word_pos_tagging(i, 'PRP') for i in temp]
+  df['VBD'] = [count_word_pos_tagging(i, 'VBD') for i in temp]
+
+  # calculate avergae length of word of title per user
+  df['Length_Title'] = df['Title'].apply(lambda x: len(word_tokenize(x)))
+
+  #get month of each writing
+  df['Month'] = df['Date'].apply(lambda x: x.month)
+  #get hour of each writing
+  df['Hour'] = df['Date'].apply(lambda x: x.hour)
+
+
+  result_df = df.groupby('SubjectId').agg({'POS':'mean', 'PRP':'mean', 'VBD':'mean','Length_Title': 'mean', 'Month':'mean','Hour':'mean','LWF': 'mean', 'FRE': 'mean', 'DCR': 'mean', 'FOG': 'mean','AVG_SEN':'mean', 'AVG_PER_WORD': 'mean','My_Depression':'sum','My_Anxiety':'sum','My_Therapist':'sum','word_I':'mean','word_I_title':'mean','Diagnosed_Depression':'sum' ,'Antidepressants':'sum','Text':'count'}).reset_index()
+  #result_df["Label"] = label
+ 
+  #join text per user
+  joined_text_df = df.groupby('SubjectId')['text'].apply(' '.join).reset_index()
+  result_df = result_df.merge(joined_text_df, on="SubjectId")
+
+  # number_of_writings_df = df.groupby('TrainSubjectId')['Text'].apply(lambda x: len(x)).reset_index()
+  result_df.rename(columns={'Text': 'NumOfWritings'}, inplace=True)
+
+  # #merge number of writings and result_df on trainSubjectId
+  # result_df_final = result_df.merge(number_of_writings_df, on="TrainSubjectId")
+  
+  return result_df
+
 def predict_from_chunk_data(model1, type1,model2, type2, all_writings, all_users, previous_predicted_results = None):
     """
     :param model: the model used for prediction
@@ -185,7 +296,7 @@ def predict_from_chunk_data(model1, type1,model2, type2, all_writings, all_users
 
         #text = title_and_text.str.cat(sep=' '))
         #print(all_writings_of_subject)
-        all_writings_of_subject_liwc = construct_liwc_input_crafted(all_writings_of_subject)
+        all_writings_of_subject_liwc = construct_liwc_input_crafted_full(all_writings_of_subject)
         data1 = utils.pre_processing(all_writings_of_subject_liwc, type1)
         data2 = utils.pre_processing(all_writings_of_subject, type2)
         #print(data)
@@ -197,18 +308,18 @@ def predict_from_chunk_data(model1, type1,model2, type2, all_writings, all_users
             prob2 = model2.predict_proba(data2)
             #average prob
             prob = np.mean([prob1, prob2], axis=0)
-            if prob[0,1] > 0.9:
+            if prob[0,1] > 0.6:
                 risk = 1
-            elif prob[0,1] > 0.8 and all_writings_of_subject.shape[0] > 20:
-                risk = 1
-            elif prob[0,1] > 0.7 and all_writings_of_subject.shape[0] > 30:
-                 risk = 1
+            # elif prob[0,1] > 0.7 and all_writings_of_subject.shape[0] > 20:
+            #     risk = 1
+            # elif prob[0,1] > 0.6 and all_writings_of_subject.shape[0] > 30:
+            #      risk = 1
             elif prob[0,1] < 0.1:
                 risk = 2
-            elif prob[0,1] < 0.2 and all_writings_of_subject.shape[0] > 20:
-                risk = 2
-            elif prob[0,1] < 0.3 and all_writings_of_subject.shape[0] > 30:
-                risk = 2
+            # elif prob[0,1] < 0.2 and all_writings_of_subject.shape[0] > 20:
+            #     risk = 2
+            # elif prob[0,1] < 0.3 and all_writings_of_subject.shape[0] > 30:
+            #     risk = 2
             else:
                 risk = 0
         # risk = random.randint(0, 1)
@@ -271,7 +382,7 @@ for chunk_i in range(1, 11):
     all_writings = pd.concat([all_writings, chunk_writings], ignore_index=True)
 
     print(f"Start predicting chunk {chunk_i}")
-    predicted_results = predict_from_chunk_data(liwc_crafted_23, 'liwc',doc2vec, 'doc2vec', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
+    predicted_results = predict_from_chunk_data(liwc_alike_crated_full, 'liwc_alike',doc2vec, 'doc2vec', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
 
     if (chunk_i == 10):
         predicted_results.loc[predicted_results["Risk"] == 0, "Risk"] = 2

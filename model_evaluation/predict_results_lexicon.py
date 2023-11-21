@@ -56,6 +56,14 @@ liwc_alike_crafted_23 = joblib.load( os.path.join(HOME_DIR,'alike_handcrafted_li
 #get liwc_alike_crafted_full
 liwc_alike_crated_full = joblib.load(os.path.join(HOME_DIR, "liwc_alike_full_crafted.pkl"))
 
+#get liwc_crafted_full
+liwc_crafted_full = joblib.load(os.path.join(HOME_DIR, "liwc_full_crafted.pkl"))
+
+#get liwc_alike_crafted_10
+liwc_alike_crafted_full_10 = joblib.load(os.path.join(HOME_DIR, "liwc_alike_10_full_crafted.pkl"))
+#get liwc_crafted_10
+liwc_10_full_crated = joblib.load(os.path.join(HOME_DIR, "liwc_10_full_crafted.pkl"))
+
 # ------------------------- FUNCTIONS ------------------------- #
 def get_all_xml_files_in_a_folder(folder_path):
     xml_files = []
@@ -207,6 +215,7 @@ def count_word_list(tokens, list_word):
 
 def construct_liwc_input_crafted_full(df):
 
+  df['Date'] = pd.to_datetime(df['Date'])
   df['text'] = df['Text']+ df['Title']
   df['Token'] = df['text'].apply(lambda x: word_tokenize(x))
   df['AVG_SEN'] = df['text'].apply(lambda x:  textstat.avg_sentence_length(x))
@@ -255,12 +264,12 @@ def construct_liwc_input_crafted_full(df):
   df['Hour'] = df['Date'].apply(lambda x: x.hour)
 
 
-  result_df = df.groupby('TrainSubjectId').agg({'POS':'mean', 'PRP':'mean', 'VBD':'mean','Length_Title': 'mean', 'Month':'mean','Hour':'mean','LWF': 'mean', 'FRE': 'mean', 'DCR': 'mean', 'FOG': 'mean','AVG_SEN':'mean', 'AVG_PER_WORD': 'mean','My_Depression':'sum','My_Anxiety':'sum','My_Therapist':'sum','word_I':'mean','word_I_title':'mean','Diagnosed_Depression':'sum' ,'Antidepressants':'sum','Text':'count'}).reset_index()
+  result_df = df.groupby('SubjectId').agg({'POS':'mean', 'PRP':'mean', 'VBD':'mean','Length_Title': 'mean', 'Month':'mean','Hour':'mean','LWF': 'mean', 'FRE': 'mean', 'DCR': 'mean', 'FOG': 'mean','AVG_SEN':'mean', 'AVG_PER_WORD': 'mean','My_Depression':'sum','My_Anxiety':'sum','My_Therapist':'sum','word_I':'mean','word_I_title':'mean','Diagnosed_Depression':'sum' ,'Antidepressants':'sum','Text':'count'}).reset_index()
   #result_df["Label"] = label
  
   #join text per user
-  joined_text_df = df.groupby('TrainSubjectId')['text'].apply(' '.join).reset_index()
-  result_df = result_df.merge(joined_text_df, on="TrainSubjectId")
+  joined_text_df = df.groupby('SubjectId')['text'].apply(' '.join).reset_index()
+  result_df = result_df.merge(joined_text_df, on="SubjectId")
 
   # number_of_writings_df = df.groupby('TrainSubjectId')['Text'].apply(lambda x: len(x)).reset_index()
   result_df.rename(columns={'Text': 'NumOfWritings'}, inplace=True)
@@ -314,23 +323,23 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
         #risk = model.predict(data)
             prob = model.predict_proba(data)
             #print(prob)
-            if prob[0,1] > 0.99:
+            if prob[0,1] > 0.7:
                 risk = 1
-            #print(all_writings_of_subject['NumOfWritings'].iloc[0])
-            elif prob[0,1] > 0.9 and all_writings_of_subject['NumOfWritings'].iloc[0] > 60:
-                risk = 1
-            elif prob[0,1] > 0.8 and all_writings_of_subject['NumOfWritings'].iloc[0] > 80:
-                risk = 1
+            # print(all_writings_of_subject['NumOfWritings'].iloc[0])
+            # elif prob[0,1] > 0.5 and all_writings_of_subject['NumOfWritings'].iloc[0] > 30:
+            #     risk = 1
+            # elif prob[0,1] > 0.7 and all_writings_of_subject['NumOfWritings'].iloc[0] > 50:
+            #     risk = 1
             # elif prob[0,1] > 0.8 and all_writings_of_subject.shape[0] > 60:
             #     risk = 1
             # elif prob[0,1] > 0.8 and all_writings_of_subject['NumOfWritings'].iloc[0] > 150:
             #     risk = 1
-            elif prob[0,1] < 0.1:
+            elif prob[0,1] < 0.2:
                 risk = 2
-            elif prob[0,1] < 0.2 and all_writings_of_subject['NumOfWritings'].iloc[0] > 20:
-                risk = 2
-            elif prob[0,1] < 0.3 and all_writings_of_subject['NumOfWritings'].iloc[0] > 30:
-                 risk = 2
+            # elif prob[0,1] < 0.2 and all_writings_of_subject['NumOfWritings'].iloc[0] > 10:
+            #      risk = 2
+            # elif prob[0,1] < 0.2 and all_writings_of_subject['NumOfWritings'].iloc[0] > 20:
+            #      risk = 2
             else:
                 risk = 0
         # risk = random.randint(0, 1)
@@ -393,7 +402,7 @@ for chunk_i in range(1, 11):
     all_writings = pd.concat([all_writings, chunk_writings], ignore_index=True)
 
     print(f"Start predicting chunk {chunk_i}")
-    predicted_results = predict_from_chunk_data(liwc_alike_crated_full, 'liwc_alike', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
+    predicted_results = predict_from_chunk_data(liwc_alike_crafted_full_10, 'liwc_alike', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
 
     if (chunk_i == 10):
         predicted_results.loc[predicted_results["Risk"] == 0, "Risk"] = 2
@@ -401,6 +410,7 @@ for chunk_i in range(1, 11):
     write_predicted_results_to_file(predicted_results, chunk_i)
 
     previous_predicted_results = predicted_results
+
 
 
 
