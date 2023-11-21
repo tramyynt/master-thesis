@@ -323,7 +323,7 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
         #risk = model.predict(data)
             prob = model.predict_proba(data)
             #print(prob)
-            if prob[0,1] > 0.7:
+            if prob[0,1] > 0.8:
                 risk = 1
             # print(all_writings_of_subject['NumOfWritings'].iloc[0])
             # elif prob[0,1] > 0.5 and all_writings_of_subject['NumOfWritings'].iloc[0] > 30:
@@ -402,7 +402,7 @@ for chunk_i in range(1, 11):
     all_writings = pd.concat([all_writings, chunk_writings], ignore_index=True)
 
     print(f"Start predicting chunk {chunk_i}")
-    predicted_results = predict_from_chunk_data(liwc_alike_crafted_full_10, 'liwc_alike', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
+    predicted_results = predict_from_chunk_data(liwc_10_full_crated, 'liwc', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
 
     if (chunk_i == 10):
         predicted_results.loc[predicted_results["Risk"] == 0, "Risk"] = 2
