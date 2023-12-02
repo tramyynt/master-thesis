@@ -64,6 +64,9 @@ liwc_alike_crafted_full_10 = joblib.load(os.path.join(HOME_DIR, "liwc_alike_10_f
 #get liwc_crafted_10
 liwc_10_full_crated = joblib.load(os.path.join(HOME_DIR, "liwc_10_full_crafted.pkl"))
 
+#get liwc_alike_svm_full_crafted
+liwc_alike_svm_full_crafted = joblib.load(os.path.join(HOME_DIR, "liwc_alike_svm_full_crafted.pkl"))
+
 # ------------------------- FUNCTIONS ------------------------- #
 def get_all_xml_files_in_a_folder(folder_path):
     xml_files = []
@@ -323,21 +326,21 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
         #risk = model.predict(data)
             prob = model.predict_proba(data)
             #print(prob)
-            if prob[0,1] > 0.8:
+            if prob[0,1] > 0.5:
                 risk = 1
             # print(all_writings_of_subject['NumOfWritings'].iloc[0])
-            # elif prob[0,1] > 0.5 and all_writings_of_subject['NumOfWritings'].iloc[0] > 30:
-            #     risk = 1
+            elif prob[0,1] > 0.4 and all_writings_of_subject['NumOfWritings'].iloc[0] > 20:
+                risk = 1
             # elif prob[0,1] > 0.7 and all_writings_of_subject['NumOfWritings'].iloc[0] > 50:
             #     risk = 1
             # elif prob[0,1] > 0.8 and all_writings_of_subject.shape[0] > 60:
             #     risk = 1
             # elif prob[0,1] > 0.8 and all_writings_of_subject['NumOfWritings'].iloc[0] > 150:
             #     risk = 1
-            elif prob[0,1] < 0.2:
+            elif prob[0,1] < 0.01:
                 risk = 2
-            # elif prob[0,1] < 0.2 and all_writings_of_subject['NumOfWritings'].iloc[0] > 10:
-            #      risk = 2
+            elif prob[0,1] < 0.05 and all_writings_of_subject['NumOfWritings'].iloc[0] > 20:
+                 risk = 2
             # elif prob[0,1] < 0.2 and all_writings_of_subject['NumOfWritings'].iloc[0] > 20:
             #      risk = 2
             else:
@@ -402,7 +405,7 @@ for chunk_i in range(1, 11):
     all_writings = pd.concat([all_writings, chunk_writings], ignore_index=True)
 
     print(f"Start predicting chunk {chunk_i}")
-    predicted_results = predict_from_chunk_data(liwc_10_full_crated, 'liwc', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
+    predicted_results = predict_from_chunk_data(liwc_alike_svm_full_crafted, 'liwc_alike', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
 
     if (chunk_i == 10):
         predicted_results.loc[predicted_results["Risk"] == 0, "Risk"] = 2

@@ -495,10 +495,10 @@ def pre_processing(df, type):
         #X= savgol_filter(X, window_length=4, polyorder=3, deriv=2)
         #X = get_feature_withPCA(df,pca,features_pca, 'liwc_alike')
        # X = get_features_crafted_23(df, relevant_features_name_23, 'liwc_alike')
-        # X1 = get_features_crafted_full(df,'liwc_alike')
-        # X = scaler_alike.transform(X1)
-        X1 = get_features_crafted_10(df,'liwc_alike')
-        X = scaler_alike_10.transform(X1)
+        X1 = get_features_crafted_full(df,'liwc_alike')
+        X = scaler_alike.transform(X1)
+        # X1 = get_features_crafted_10(df,'liwc_alike')
+        # X = scaler_alike_10.transform(X1)
         #print(X)
     return X
 
