@@ -20,6 +20,12 @@ import ast
 from scipy.signal import savgol_filter
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+import fasttext
+import fasttext.util
+import tensorflow as tf
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+import warnings
+warnings.filterwarnings("ignore")
 
 HOME_DIR = "/home_remote"
 fname = get_tmpfile(os.path.join(HOME_DIR,"master_thesis/model_evaluation/my_doc2vec_model"))
@@ -32,6 +38,8 @@ scaler_alike = joblib.load(os.path.join(HOME_DIR, "scaler_alike.pkl"))
 scaler_liwc = joblib.load( os.path.join(HOME_DIR, "scaler_liwc.pkl"))
 scaler_alike_10 = joblib.load(os.path.join(HOME_DIR, "scaler_alike_10.pkl"))
 scaler_liwc_10 = joblib.load( os.path.join(HOME_DIR, "scaler_liwc_10.pkl"))
+#load fasttext model
+ft = fasttext.load_model('/home_remote/fastText/cc.en.300.bin')
 
 #feature names
 relevant_features_name ={'liwc': ['i', 'AverageLength', 'friend', 'sad', 'family', 'feel', 'health',
@@ -457,6 +465,23 @@ def get_features_crafted_10(df, type):
     X = re
     return X
 
+def get_documents_matrix(documents, max_words=100, embedding_dim=300, embedding_model=ft):
+    document_matrices = []
+
+    for document in documents:
+        # Split document into words
+        words = document.split()[:max_words]
+
+        # Get word embeddings using FastText
+        embeddings = [ft.get_word_vector(word) for word in words]
+
+        document_matrices.append(embeddings)
+
+    # Pad each sequence of embeddings to a common length
+    padded_document_matrices = pad_sequences(document_matrices, maxlen=max_words, dtype='float32', padding='post', truncating='post')
+
+    return padded_document_matrices
+
 
 def pre_processing(df, type):
     if type == 'tfidf':
@@ -500,6 +525,10 @@ def pre_processing(df, type):
         # X1 = get_features_crafted_10(df,'liwc_alike')
         # X = scaler_alike_10.transform(X1)
         #print(X)
+    
+    elif type == 'cnn':
+        X= get_documents_matrix(df['text'])
+    
     return X
 
 
