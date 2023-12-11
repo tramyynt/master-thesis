@@ -326,10 +326,10 @@ def predict_from_chunk_data(model, type, all_writings, all_users, previous_predi
         #risk = model.predict(data)
             prob = model.predict_proba(data)
             #print(prob)
-            if prob[0,1] > 0.5:
+            if prob[0,1] > 0.4:
                 risk = 1
             # print(all_writings_of_subject['NumOfWritings'].iloc[0])
-            elif prob[0,1] > 0.4 and all_writings_of_subject['NumOfWritings'].iloc[0] > 20:
+            elif prob[0,1] > 0.35 and all_writings_of_subject['NumOfWritings'].iloc[0] > 20:
                 risk = 1
             # elif prob[0,1] > 0.7 and all_writings_of_subject['NumOfWritings'].iloc[0] > 50:
             #     risk = 1

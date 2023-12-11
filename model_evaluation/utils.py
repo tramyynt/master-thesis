@@ -507,8 +507,8 @@ def pre_processing(df, type):
         #smoothing with Savitzky-Golay filter
         #X = savgol_filter(X, window_length=4, polyorder=3, deriv=2)
         #X = get_features_crafted_23(df, relevant_features_name_23, 'liwc')
-        X1 = get_features_crafted_10(df,'liwc')
-        X = scaler_liwc_10.transform(X1)
+        X1 = get_features_crafted_full(df,'liwc')
+        X = scaler_liwc.transform(X1)
 
         #print(X)
 

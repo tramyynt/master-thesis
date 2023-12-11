@@ -279,10 +279,10 @@ def predict_from_chunk_data(model1, type1, model2, type2, all_writings, all_user
         #risk = model.predict(data)
             prob1 = model1.predict_proba(data)
             re_prob2 = model2.predict(data2)
-            prob2= np.percentile(re_prob2, 98)
-            prob = (prob1+prob2)/2
+            prob2= np.percentile(re_prob2, 95)
+            prob = (prob1[0,1]+prob2)/2
             #print(prob)
-            if prob[0,1] > 0.7:
+            if prob > 0.6:
                 risk = 1
             # print(all_writings_of_subject['NumOfWritings'].iloc[0])
             # elif prob[0,1] > 0.35 and all_writings_of_subject_joined['NumOfWritings'].iloc[0] > 20:
@@ -293,7 +293,86 @@ def predict_from_chunk_data(model1, type1, model2, type2, all_writings, all_user
             #     risk = 1
             # elif prob[0,1] > 0.8 and all_writings_of_subject_joined['NumOfWritings'].iloc[0] > 150:
             #     risk = 1
-            elif prob[0,1] < 0.1:
+            elif prob < 0.1:
+                risk = 2
+            # elif prob[0,1] < 0.05 and all_writings_of_subject_joined['NumOfWritings'].iloc[0] > 20:
+            #      risk = 2
+            # # elif prob[0,1] < 0.2 and all_writings_of_subject['NumOfWritings'].iloc[0] > 20:
+            #      risk = 2
+            else:
+                risk = 0
+        # risk = random.randint(0, 1)
+
+        # if risk != 0:
+        #     print(f"Predicted subject {subject_id} with risk {risk}")
+
+        predicted_results = pd.concat([
+            predicted_results,
+            pd.DataFrame.from_dict({"SubjectId": [subject_id], "Risk": risk})
+        ], ignore_index=True)
+
+    return predicted_results.sort_values(by=['SubjectId'], ignore_index=True)
+
+def predict_from_chunk_data_only_cnn(model, type, all_writings, all_users, previous_predicted_results = None):
+    """
+    :param model: the model used for prediction
+    :param type: the type of model (tfidf, doc2vec, liwc, liwc_alike)
+    :param all_writings all writings of all users from current chunk and all previous chunks
+    :param all_users list of subject/user id
+    """
+    
+    predicted_results = pd.DataFrame(columns = ['SubjectId', 'Risk'])
+
+    for subject_id in all_users:
+        has_predicted, previous_risk = has_subject_id_been_predicted(subject_id, previous_predicted_results)
+        if has_predicted:
+            print(f"Skip prediction of subject {subject_id} because it has been predicted")
+            predicted_results = pd.concat([
+                predicted_results,
+                pd.DataFrame.from_dict({"SubjectId": [subject_id], "Risk": [previous_risk]})
+            ], ignore_index=True)
+            continue
+
+        all_writings_of_subject = all_writings.loc[all_writings['SubjectId'] == subject_id]
+        if all_writings_of_subject.empty:
+            print(f"[ERROR] Subject {subject_id} has no writings")
+            continue
+        
+        all_writings_of_subject['text'] = all_writings_of_subject['Text']+ all_writings_of_subject['Title']
+        # Predict the risk of each user (0: skip the chunk; 1: positive; 2: negative)
+        # TODO: option to join all documents or using one document at a time
+        #all_writings_of_subject_joined = construct_liwc_input_crafted_full(all_writings_of_subject)
+
+        #join all text in each individual_writings
+        #all_writings_of_subject['text'] = all_writings_of_subject['Title'] + all_writings_of_subject['Text']
+
+        #text = title_and_text.str.cat(sep=' '))
+        #print(all_writings_of_subject)
+    
+        #data = utils.pre_processing(all_writings_of_subject_joined, type1)
+        data = utils.pre_processing(all_writings_of_subject, type)
+        if data is None:
+            continue
+        else:
+        #print(data)
+        #risk = model.predict(data)
+            #prob1 = model1.predict_proba(data)
+            re_prob2 = model.predict(data)
+            prob= np.percentile(re_prob2, 95)
+            #prob = (prob1+prob2)/2
+            print(prob)
+            if prob > 0.5:
+                risk = 1
+            # print(all_writings_of_subject['NumOfWritings'].iloc[0])
+            # elif prob[0,1] > 0.35 and all_writings_of_subject_joined['NumOfWritings'].iloc[0] > 20:
+            #     risk = 1
+            # elif prob[0,1] > 0.7 and all_writings_of_subject_joined['NumOfWritings'].iloc[0] > 50:
+            #     risk = 1
+            # elif prob[0,1] > 0.8 and all_writings_of_subject.shape[0] > 60:
+            #     risk = 1
+            # elif prob[0,1] > 0.8 and all_writings_of_subject_joined['NumOfWritings'].iloc[0] > 150:
+            #     risk = 1
+            elif prob < 0.1:
                 risk = 2
             # elif prob[0,1] < 0.05 and all_writings_of_subject_joined['NumOfWritings'].iloc[0] > 20:
             #      risk = 2
@@ -362,7 +441,7 @@ for chunk_i in range(1, 11):
 
     print(f"Start predicting chunk {chunk_i}")
     predicted_results = predict_from_chunk_data(liwc_alike_crated_full, 'liwc_alike',my_tf_saved_model, 'cnn', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
-
+    #predicted_results = predict_from_chunk_data_only_cnn(my_tf_saved_model, 'cnn', all_writings=all_writings, all_users=all_users, previous_predicted_results=previous_predicted_results)
     if (chunk_i == 10):
         predicted_results.loc[predicted_results["Risk"] == 0, "Risk"] = 2
 
