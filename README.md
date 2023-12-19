@@ -2,8 +2,8 @@
 
 Need to format test files before running evaluation.
 
--   `writings_all_test_users.txt` need to be separated by comma (",") and all spaces around are being trimmed.
--   `test_golden_truth.txt` need to be separated by 1 space, not tab and all spaces around are being trimmed.
+-   `writings_all_test_users.txt` needs to be separated by comma (",") and all spaces around are being trimmed.
+-   `test_golden_truth.txt` needs to be separated by 1 space, not tab and all spaces around are being trimmed.
 
 Need to uncomment the processing model in utils.py corresponding to the model used in predict.results.py
 
@@ -17,8 +17,6 @@ Need to uncomment the processing model in utils.py corresponding to the model us
 
 ## Other scripts
 a. **Run lexicon_based models**
-
-    0. `cd model_evaluation`
     
     1. `python3 predict_results_lexicon.py`
     
@@ -29,8 +27,6 @@ a. **Run lexicon_based models**
     
 b. **Run neural networks models**
 
-    0. `cd model_evaluation`
-    
     1. `python3 predict_results_cnn.py`
     
     2. `python3 aggregate_results.py -path ./results_lexicon -wsource ./test_data/writings_all_test_users.txt`
@@ -39,8 +35,6 @@ b. **Run neural networks models**
 
     
 c. **Run combined models**
-
-    0. `cd model_evaluation`
     
     1. `python3 predict_results_combined.py`
     
