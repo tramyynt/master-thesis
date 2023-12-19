@@ -17,19 +17,35 @@ Need to uncomment the processing model in utils.py corresponding to the model us
 
 ## Other scripts
 a. **Run lexicon_based models**
+
     0. `cd model_evaluation`
+    
     1. `python3 predict_results_lexicon.py`
+    
     2. `python3 aggregate_results.py -path ./results_lexicon -wsource ./test_data/writings_all_test_users.txt`
+    
     3. `python3 erisk_eval.py -gpath ./test_data/test_golden_truth.txt -ppath ./results_lexicon/mynguyen_global.txt -o 5 -oper 20`
+
+    
 b. **Run neural networks models**
+
     0. `cd model_evaluation`
+    
     1. `python3 predict_results_cnn.py`
+    
     2. `python3 aggregate_results.py -path ./results_lexicon -wsource ./test_data/writings_all_test_users.txt`
+    
     3. `python3 erisk_eval.py -gpath ./test_data/test_golden_truth.txt -ppath ./results_lexicon/mynguyen_global.txt -o 5 -oper 20`
+
+    
 c. **Run combined models**
+
     0. `cd model_evaluation`
+    
     1. `python3 predict_results_combined.py`
+    
     2. `python3 aggregate_results.py -path ./results_lexicon -wsource ./test_data/writings_all_test_users.txt`
+    
     3. `python3 erisk_eval.py -gpath ./test_data/test_golden_truth.txt -ppath ./results_lexicon/mynguyen_global.txt -o 5 -oper 20`
 
 
